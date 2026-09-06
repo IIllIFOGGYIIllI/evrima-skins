@@ -26,7 +26,7 @@
   <div class="statuses">
     <span id="apiStatus" class="status warn">API checking…</span>
     <span id="serverStatus" class="status warn">Bridge checking…</span>
-    <span class="status">Web v0.7.0</span>
+    <span class="status">Web v0.7.1</span>
   </div>
 </header>
 
@@ -50,20 +50,6 @@
 
     <div id="viewerShell" class="viewer-shell scene-studio">
       <canvas id="viewer3d" aria-label="Interactive dinosaur skin preview"></canvas>
-      <div id="hqViewerWrap" class="hq-viewer-wrap">
-        <iframe id="hqFrame"
-          title="High-detail dinosaur preview"
-          allow="autoplay; fullscreen; xr-spatial-tracking"
-          allowfullscreen
-          webkitallowfullscreen="true"
-          mozallowfullscreen="true"></iframe>
-        <div id="hqLoading" class="hq-loading">
-          <div class="spinner"></div>
-          <span>Loading high-detail model…</span>
-        </div>
-        <div id="hqUnavailable" class="hq-unavailable"></div>
-        <a id="hqCredit" class="hq-credit" href="#" target="_blank" rel="noopener"></a>
-      </div>
       <img id="fallbackImage" class="fallback-image" alt="Evrima species reference">
       <div id="referenceCard" class="reference-card">
         <span>EVRIMA REFERENCE</span>
@@ -121,7 +107,7 @@
 
     <div class="preview-fidelity">
       <strong id="fidelityTitle">HQ 3D preview</strong>
-      <span id="fidelityText">Uses a higher-detail licensed model and preserves its original textures while tinting matching material regions. Skin Map 3D shows all ten custom colours more aggressively.</span>
+      <span id="fidelityText">Direct GLB rendering inside this page — no embedded third-party viewer, cookies or browser exceptions. Skin Map 3D remains the colour-accuracy view.</span>
     </div>
 
     <div class="apply-row">
@@ -231,9 +217,7 @@
 
 <div id="toast" class="toast"></div>
 <script src="./config.js"></script>
-<script src="https://static.sketchfab.com/api/sketchfab-viewer-1.12.1.js"></script>
 <script type="module" src="./viewer3d.js"></script>
-<script src="./viewer_hq.js"></script>
 <script src="./app.js"></script>
 </body>
 </html>

@@ -22,10 +22,7 @@ detail:"#49504A",breed:"#687A5A",eyes:"#D59B36",teeth:"#D8CFAC",
 mouth:"#6B3037",claws:"#333333"
 };
 
-const HQ_AVAILABLE=new Set([
-  "tyrannosaurus","triceratops","carnotaurus","deinosuchus",
-  "dilophosaurus","pteranodon","pachycephalosaurus"
-]);
+const HQ_AVAILABLE=new Set(["tyrannosaurus"]);
 
 let colors={...DEFAULTS};
 let selected=SPECIES[0],patternIndex=0,skinVariation=1,themeIndex=0,previewSex="male";
@@ -147,7 +144,7 @@ function renderPreviewMode(){
   const title=$("fidelityTitle"),text=$("fidelityText");
   if(previewMode==="hq"){
     title.textContent="HQ 3D preview";
-    text.textContent="Higher-detail licensed model with original surface textures retained. Material colours are tinted live where the model exposes usable material regions.";
+    text.textContent="Higher-detail direct GLB rendered by Three.js. Original textures are preserved where available and material colours are tinted live. No Sketchfab embed is used.";
     $("viewerHint").textContent="Drag to rotate · wheel to zoom";
   }else if(previewMode==="skin3d"){
     title.textContent="Skin Map 3D preview";
@@ -339,9 +336,3 @@ window.addEventListener("foggy:model-status",e=>{
   badge.className="chip-label "+(d.kind==="exact"?"model-exact":d.kind==="proxy"?"model-proxy":d.kind==="error"?"model-error":d.kind==="loading"?"model-loading":"model-fallback");
 });
 
-window.addEventListener("foggy:hq-status",e=>{
-  const d=e.detail||{},badge=$("modelBadge");
-  if(previewMode!=="hq")return;
-  badge.textContent=d.label||"HQ 3D";
-  badge.className="chip-label "+(d.kind==="ready"?"model-exact":d.kind==="error"?"model-error":"model-loading");
-});
