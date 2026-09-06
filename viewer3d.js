@@ -298,6 +298,13 @@ async function loadSpecies(next){
   state=next||state;if(!state)return;
   const slug=state.species?.slug||state.species||"tyrannosaurus";
   fallback.src=state.fallbackImage||state.species?.image||"";
+  if(state.mode==="hq"){
+    canvas.style.visibility="hidden";
+    fallback.style.display="none";
+    showLoading(false);showMessage("");
+    return;
+  }
+  canvas.style.visibility="visible";
   const info=modelInfo(slug);
 
   if(!info){
@@ -366,7 +373,11 @@ window.addEventListener("foggy:viewer-state",e=>{
   const prevMode=state?.mode;
   state=e.detail;
   const nextSlug=state?.species?.slug||state?.species;
-  if(nextSlug!==prevSlug||!root)loadSpecies(state);
+  if(state.mode==="hq"){
+    canvas.style.visibility="hidden";fallback.style.display="none";showLoading(false);showMessage("");return;
+  }
+  canvas.style.visibility="visible";
+  if(nextSlug!==prevSlug||!root||prevMode==="hq")loadSpecies(state);
   else{recolor();if(state.mode!==prevMode)setViewMode(state.mode);}
 });
 window.addEventListener("foggy:viewer-settings",e=>applyEnvironment(e.detail));

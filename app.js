@@ -22,9 +22,14 @@ detail:"#49504A",breed:"#687A5A",eyes:"#D59B36",teeth:"#D8CFAC",
 mouth:"#6B3037",claws:"#333333"
 };
 
+const HQ_AVAILABLE=new Set([
+  "tyrannosaurus","triceratops","carnotaurus","deinosuchus",
+  "dilophosaurus","pteranodon","pachycephalosaurus"
+]);
+
 let colors={...DEFAULTS};
 let selected=SPECIES[0],patternIndex=0,skinVariation=1,themeIndex=0,previewSex="male";
-let viewerMode="3d";
+let previewMode="hq";
 let session=localStorage.getItem("foggy_skin_session")||"",me=null;
 let history=[],future=[],historyLock=false;
 const $=id=>document.getElementById(id);
@@ -84,7 +89,7 @@ function viewerState(){
     colors:{...colors},
     patternIndex,skinVariation,themeIndex,previewSex,
     enabled:true,
-    mode:viewerMode,
+    mode:previewMode,
     fallbackImage:selected.image
   };
 }
@@ -131,11 +136,34 @@ function renderColors(){
     if(r){const [a,b,c]=rgb(colors[s.key]);r.textContent=`RGB ${a}, ${b}, ${c}`;}
   });
 }
+function renderPreviewMode(){
+  if(previewMode==="hq"&&!HQ_AVAILABLE.has(selected.slug))previewMode="skin3d";
+  document.querySelectorAll("[data-preview-mode]").forEach(b=>{
+    const mode=b.dataset.previewMode;
+    b.classList.toggle("active",mode===previewMode);
+    b.disabled=mode==="hq"&&!HQ_AVAILABLE.has(selected.slug);
+  });
+  $("viewerShell").classList.toggle("mode-hq",previewMode==="hq");
+  const title=$("fidelityTitle"),text=$("fidelityText");
+  if(previewMode==="hq"){
+    title.textContent="HQ 3D preview";
+    text.textContent="Higher-detail licensed model with original surface textures retained. Material colours are tinted live where the model exposes usable material regions.";
+    $("viewerHint").textContent="Drag to rotate · wheel to zoom";
+  }else if(previewMode==="skin3d"){
+    title.textContent="Skin Map 3D preview";
+    text.textContent="Lower-detail compatibility mesh, but all ten creator colours and pattern controls are mapped aggressively for clearer skin-design feedback.";
+    $("viewerHint").textContent="Drag to rotate · wheel to zoom";
+  }else{
+    title.textContent="Skin 2D preview";
+    text.textContent="Fixed side-on render of the same live-coloured compatibility mesh. Every colour change remains visible without camera movement.";
+    $("viewerHint").textContent="Fixed side-on skin preview";
+  }
+}
 function renderAll(){
   $("previewTitle").textContent=selected.name;$("viewerSpecies").textContent=selected.name;
   $("categoryBadge").textContent=selected.category;$("species").value=selected.slug;
   $("referenceImage").src=selected.image;$("referenceImage").alt=selected.name+" Evrima reference";
-  renderPatternButtons();renderSegmented();renderColors();renderPalette();emitViewer();
+  renderPatternButtons();renderSegmented();renderColors();renderPalette();renderPreviewMode();emitViewer();
 }
 function buildSpecies(){
   const groups={};
@@ -297,12 +325,11 @@ function emitSettings(){
   window.dispatchEvent(new CustomEvent("foggy:viewer-settings",{detail:window.FOGGY_VIEWER_SETTINGS}));
 }
 ["sceneSelect","backgroundEnabled","backdropBrightness","lighting","idleEnabled"].forEach(id=>$(id).addEventListener("input",emitSettings));
-$("toggle3d").onclick=()=>{
-  viewerMode=viewerMode==="3d"?"2d":"3d";
-  $("toggle3d").textContent="View: "+viewerMode.toUpperCase();
-  $("toggle3d").classList.toggle("active",viewerMode==="3d");
-  emitViewer();
-};
+document.querySelectorAll("[data-preview-mode]").forEach(b=>b.onclick=()=>{
+  if(b.disabled)return;
+  previewMode=b.dataset.previewMode;
+  renderAll();
+});
 $("resetCamera").onclick=()=>window.dispatchEvent(new CustomEvent("foggy:viewer-reset"));
 emitSettings();
 
@@ -310,4 +337,11 @@ window.addEventListener("foggy:model-status",e=>{
   const d=e.detail||{},badge=$("modelBadge");
   badge.textContent=d.label||"Preview";
   badge.className="chip-label "+(d.kind==="exact"?"model-exact":d.kind==="proxy"?"model-proxy":d.kind==="error"?"model-error":d.kind==="loading"?"model-loading":"model-fallback");
+});
+
+window.addEventListener("foggy:hq-status",e=>{
+  const d=e.detail||{},badge=$("modelBadge");
+  if(previewMode!=="hq")return;
+  badge.textContent=d.label||"HQ 3D";
+  badge.className="chip-label "+(d.kind==="ready"?"model-exact":d.kind==="error"?"model-error":"model-loading");
 });

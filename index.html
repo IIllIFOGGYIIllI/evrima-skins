@@ -26,7 +26,7 @@
   <div class="statuses">
     <span id="apiStatus" class="status warn">API checking…</span>
     <span id="serverStatus" class="status warn">Bridge checking…</span>
-    <span class="status">Web v0.6.2</span>
+    <span class="status">Web v0.7.0</span>
   </div>
 </header>
 
@@ -50,6 +50,20 @@
 
     <div id="viewerShell" class="viewer-shell scene-studio">
       <canvas id="viewer3d" aria-label="Interactive dinosaur skin preview"></canvas>
+      <div id="hqViewerWrap" class="hq-viewer-wrap">
+        <iframe id="hqFrame"
+          title="High-detail dinosaur preview"
+          allow="autoplay; fullscreen; xr-spatial-tracking"
+          allowfullscreen
+          webkitallowfullscreen="true"
+          mozallowfullscreen="true"></iframe>
+        <div id="hqLoading" class="hq-loading">
+          <div class="spinner"></div>
+          <span>Loading high-detail model…</span>
+        </div>
+        <div id="hqUnavailable" class="hq-unavailable"></div>
+        <a id="hqCredit" class="hq-credit" href="#" target="_blank" rel="noopener"></a>
+      </div>
       <img id="fallbackImage" class="fallback-image" alt="Evrima species reference">
       <div id="referenceCard" class="reference-card">
         <span>EVRIMA REFERENCE</span>
@@ -63,8 +77,12 @@
       <div class="viewer-topline">
         <span id="viewerSpecies">Tyrannosaurus</span>
         <div class="viewer-actions">
+          <div id="previewModeTabs" class="preview-mode-tabs">
+            <button data-preview-mode="hq" class="tiny active">HQ 3D</button>
+            <button data-preview-mode="skin3d" class="tiny">Skin Map 3D</button>
+            <button data-preview-mode="2d" class="tiny">Skin 2D</button>
+          </div>
           <button id="resetCamera" class="tiny">Reset camera</button>
-          <button id="toggle3d" class="tiny active">View: 3D</button>
         </div>
       </div>
 
@@ -77,7 +95,7 @@
         <label>
           <span>Scene</span>
           <select id="sceneSelect">
-            <option value="jungle">Jungle atmosphere</option>
+            <option value="jungle">Jungle ambience</option>
             <option value="lagoon">Lagoon</option>
             <option value="studio" selected>Dark studio</option>
             <option value="night">Night forest</option>
@@ -97,8 +115,13 @@
         </label>
       </div>
 
-      <div class="viewer-hint">Drag to rotate · wheel to zoom</div>
+      <div id="viewerHint" class="viewer-hint">Drag to rotate · wheel to zoom</div>
       <div id="paletteBar" class="palette-bar"></div>
+    </div>
+
+    <div class="preview-fidelity">
+      <strong id="fidelityTitle">HQ 3D preview</strong>
+      <span id="fidelityText">Uses a higher-detail licensed model and preserves its original textures while tinting matching material regions. Skin Map 3D shows all ten custom colours more aggressively.</span>
     </div>
 
     <div class="apply-row">
@@ -208,7 +231,9 @@
 
 <div id="toast" class="toast"></div>
 <script src="./config.js"></script>
+<script src="https://static.sketchfab.com/api/sketchfab-viewer-1.12.1.js"></script>
 <script type="module" src="./viewer3d.js"></script>
+<script src="./viewer_hq.js"></script>
 <script src="./app.js"></script>
 </body>
 </html>
