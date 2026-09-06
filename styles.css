@@ -163,3 +163,24 @@ footer{text-align:center;color:#6f756c;font-size:9px;margin-top:15px}
   .color-list,.creator-options,.apply-row,.saved-row,.share-row{grid-template-columns:1fr}
   .color-card{grid-template-columns:1fr 44px 100px}
 }
+
+
+/* v0.6.2 preview correction */
+.reference-card{
+  position:absolute;right:12px;bottom:39px;z-index:8;width:154px;height:98px;
+  border:1px solid #625838;background:#0a0d0a;overflow:hidden;
+  box-shadow:0 10px 28px rgba(0,0,0,.4)
+}
+.reference-card span{
+  position:absolute;left:5px;top:5px;z-index:2;padding:3px 5px;
+  background:rgba(8,11,8,.84);border:1px solid rgba(191,165,81,.45);
+  color:#e9d27f;font-size:7px;letter-spacing:.10em;font-weight:800
+}
+.reference-card img{width:100%;height:100%;object-fit:cover;display:block}
+.viewer-shell.mode-2d #viewer3d{cursor:default}
+.viewer-shell.mode-2d .viewer-hint{display:none}
+.viewer-shell.mode-2d .scene-controls .switch-row:last-child{opacity:.45;pointer-events:none}
+.viewer-message{z-index:10}
+@media(max-width:700px){
+  .reference-card{width:115px;height:72px;bottom:39px}
+}

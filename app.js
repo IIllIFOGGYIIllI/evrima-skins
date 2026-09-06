@@ -24,7 +24,7 @@ mouth:"#6B3037",claws:"#333333"
 
 let colors={...DEFAULTS};
 let selected=SPECIES[0],patternIndex=0,skinVariation=1,themeIndex=0,previewSex="male";
-let viewer3dEnabled=true;
+let viewerMode="3d";
 let session=localStorage.getItem("foggy_skin_session")||"",me=null;
 let history=[],future=[],historyLock=false;
 const $=id=>document.getElementById(id);
@@ -83,7 +83,8 @@ function viewerState(){
     species:{...selected},
     colors:{...colors},
     patternIndex,skinVariation,themeIndex,previewSex,
-    enabled:viewer3dEnabled,
+    enabled:true,
+    mode:viewerMode,
     fallbackImage:selected.image
   };
 }
@@ -133,6 +134,7 @@ function renderColors(){
 function renderAll(){
   $("previewTitle").textContent=selected.name;$("viewerSpecies").textContent=selected.name;
   $("categoryBadge").textContent=selected.category;$("species").value=selected.slug;
+  $("referenceImage").src=selected.image;$("referenceImage").alt=selected.name+" Evrima reference";
   renderPatternButtons();renderSegmented();renderColors();renderPalette();emitViewer();
 }
 function buildSpecies(){
@@ -295,7 +297,12 @@ function emitSettings(){
   window.dispatchEvent(new CustomEvent("foggy:viewer-settings",{detail:window.FOGGY_VIEWER_SETTINGS}));
 }
 ["sceneSelect","backgroundEnabled","backdropBrightness","lighting","idleEnabled"].forEach(id=>$(id).addEventListener("input",emitSettings));
-$("toggle3d").onclick=()=>{viewer3dEnabled=!viewer3dEnabled;$("toggle3d").textContent="3D: "+(viewer3dEnabled?"On":"Off");$("toggle3d").classList.toggle("active",viewer3dEnabled);emitViewer();};
+$("toggle3d").onclick=()=>{
+  viewerMode=viewerMode==="3d"?"2d":"3d";
+  $("toggle3d").textContent="View: "+viewerMode.toUpperCase();
+  $("toggle3d").classList.toggle("active",viewerMode==="3d");
+  emitViewer();
+};
 $("resetCamera").onclick=()=>window.dispatchEvent(new CustomEvent("foggy:viewer-reset"));
 emitSettings();
 

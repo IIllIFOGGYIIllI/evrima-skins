@@ -26,7 +26,7 @@
   <div class="statuses">
     <span id="apiStatus" class="status warn">API checking…</span>
     <span id="serverStatus" class="status warn">Bridge checking…</span>
-    <span class="status">Web v0.6.1</span>
+    <span class="status">Web v0.6.2</span>
   </div>
 </header>
 
@@ -48,9 +48,13 @@
       <button id="randomSpecies">Random species</button>
     </div>
 
-    <div id="viewerShell" class="viewer-shell scene-jungle">
+    <div id="viewerShell" class="viewer-shell scene-studio">
       <canvas id="viewer3d" aria-label="Interactive dinosaur skin preview"></canvas>
       <img id="fallbackImage" class="fallback-image" alt="Evrima species reference">
+      <div id="referenceCard" class="reference-card">
+        <span>EVRIMA REFERENCE</span>
+        <img id="referenceImage" alt="Selected Evrima species reference">
+      </div>
       <div id="viewerLoading" class="viewer-loading">
         <div class="spinner"></div>
         <span>Loading dinosaur model…</span>
@@ -60,7 +64,7 @@
         <span id="viewerSpecies">Tyrannosaurus</span>
         <div class="viewer-actions">
           <button id="resetCamera" class="tiny">Reset camera</button>
-          <button id="toggle3d" class="tiny active">3D: On</button>
+          <button id="toggle3d" class="tiny active">View: 3D</button>
         </div>
       </div>
 
@@ -73,9 +77,9 @@
         <label>
           <span>Scene</span>
           <select id="sceneSelect">
-            <option value="jungle">Jungle clearing</option>
+            <option value="jungle">Jungle atmosphere</option>
             <option value="lagoon">Lagoon</option>
-            <option value="studio">Dark studio</option>
+            <option value="studio" selected>Dark studio</option>
             <option value="night">Night forest</option>
           </select>
         </label>
