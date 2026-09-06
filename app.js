@@ -23,8 +23,25 @@ function rgb(h){h=clean(h)||"#000000";return[parseInt(h.slice(1,3),16),parseInt(
 function hx(r,g,b){const q=n=>Math.max(0,Math.min(255,Math.round(n))).toString(16).padStart(2,"0").toUpperCase();return"#"+q(r)+q(g)+q(b)}
 function hsl(h,s,l){s/=100;l/=100;const c=(1-Math.abs(2*l-1))*s,x=c*(1-Math.abs((h/60)%2-1)),m=l-c/2;let r=0,g=0,b=0;if(h<60)[r,g,b]=[c,x,0];else if(h<120)[r,g,b]=[x,c,0];else if(h<180)[r,g,b]=[0,c,x];else if(h<240)[r,g,b]=[0,x,c];else if(h<300)[r,g,b]=[x,0,c];else[r,g,b]=[c,0,x];return hx((r+m)*255,(g+m)*255,(b+m)*255)}
 function shareCode(){return"FGY1:"+SLOTS.map(s=>state[s.key].slice(1)).join("-")}
-function renderPalette(){$("palette").innerHTML="";SLOTS.forEach(s=>{const d=document.createElement("div");d.className="chip";d.style.background=state[s.key];d.title=`${s.label} ${state[s.key]}`;$("palette").appendChild(d)});$("shareCode").value=shareCode()}
-function renderSpecies(){$("renderName").textContent=selected.name;$("category").textContent=selected.category;const i=$("dinoRender");i.style.opacity=".22";i.onload=()=>i.style.opacity="1";i.onerror=()=>{i.onerror=null;i.removeAttribute("src");i.alt=selected.name+" render unavailable";$("renderName").textContent=selected.name+" · image unavailable"};i.src=selected.image;i.alt=selected.name+" render"}
+function renderPalette(){
+  $("palette").innerHTML="";
+  SLOTS.forEach(s=>{const d=document.createElement("div");d.className="chip";d.style.background=state[s.key];d.title=`${s.label} ${state[s.key]}`;$("palette").appendChild(d)});
+  $("shareCode").value=shareCode();
+  window.FOGGY_SKIN_PREVIEW_STATE={species:selected.slug,colors:{...state}};
+  window.dispatchEvent(new CustomEvent("foggy:skin-preview",{detail:window.FOGGY_SKIN_PREVIEW_STATE}));
+}
+function renderSpecies(){
+  $("renderName").textContent=selected.name;
+  $("category").textContent=selected.category;
+  const i=$("dinoRender");
+  i.style.opacity=".22";
+  i.onload=()=>i.style.opacity="1";
+  i.onerror=()=>{i.onerror=null;i.removeAttribute("src");i.alt=selected.name+" render unavailable"};
+  i.src=selected.image;
+  i.alt=selected.name+" Evrima reference render";
+  window.FOGGY_SKIN_PREVIEW_STATE={species:selected.slug,colors:{...state}};
+  window.dispatchEvent(new CustomEvent("foggy:skin-preview",{detail:window.FOGGY_SKIN_PREVIEW_STATE}));
+}
 function renderColors(){SLOTS.forEach(s=>{const p=$("pick-"+s.key),h=$("hex-"+s.key),r=$("rgb-"+s.key);if(p)p.value=state[s.key];if(h)h.value=state[s.key];if(r){const a=rgb(state[s.key]);r.textContent=`RGB ${a[0]}, ${a[1]}, ${a[2]}`}});renderPalette()}
 function buildSpecies(){const groups={};SPECIES.forEach(s=>(groups[s.category]||=[]).push(s));Object.entries(groups).forEach(([cat,list])=>{const g=document.createElement("optgroup");g.label=cat;list.forEach(s=>g.append(new Option(s.name,s.slug)));$("species").append(g)});$("species").value=selected.slug}
 function buildColors(){SLOTS.forEach(s=>{const d=document.createElement("div");d.className="card";d.innerHTML=`<div class="name">${s.label}</div><div class="desc">${s.desc}</div><div class="picker"><input id="pick-${s.key}" type="color"><input id="hex-${s.key}" class="hex" type="text" maxlength="7"></div><div id="rgb-${s.key}" class="rgb"></div>`;$("colors").appendChild(d);const p=d.querySelector("input[type=color]"),h=d.querySelector(".hex");p.oninput=e=>{state[s.key]=e.target.value.toUpperCase();renderColors()};h.onchange=e=>{const v=clean(e.target.value);if(v){state[s.key]=v;renderColors()}else{e.target.value=state[s.key];toast("Invalid HEX colour")}}})}

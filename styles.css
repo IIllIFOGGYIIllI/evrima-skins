@@ -28,3 +28,43 @@ button:hover{transform:translateY(-1px);border-color:#3f7e82;background:#10292d}
 .saved{display:grid;grid-template-columns:1fr auto auto;gap:6px}.footer{text-align:center;color:#5d7a7c;font-size:9px;margin-top:15px}.toast{position:fixed;right:17px;bottom:17px;border:1px solid #39777a;background:#10282b;padding:10px 13px;border-radius:10px;opacity:0;transform:translateY(7px);transition:.15s;z-index:99}.toast.show{opacity:1;transform:none}
 @media(max-width:1000px){body{padding:11px}.layout{grid-template-columns:1fr}.preview{position:relative;top:0}.stage{min-height:350px}.dino{max-height:340px}}
 @media(max-width:620px){.topbar{align-items:flex-start;flex-direction:column}.statuses{justify-content:flex-start}.colors,.quick,.actions,.saved,.toolbar{grid-template-columns:1fr}}
+
+
+/* v0.4.0 interactive 3D preview */
+.stage-3d{isolation:isolate}
+.dino3d{
+  position:absolute;inset:0;width:100%;height:100%;display:block;z-index:1;
+  cursor:grab;touch-action:none
+}
+.dino3d:active{cursor:grabbing}
+.viewer-loading{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:5;
+  border:1px solid var(--line);background:rgba(5,18,20,.88);padding:9px 12px;border-radius:999px;
+  color:#bfeeed;font-size:11px;pointer-events:none
+}
+.viewer-help{
+  position:absolute;left:12px;bottom:47px;z-index:4;padding:5px 8px;border-radius:7px;
+  background:rgba(4,14,15,.68);border:1px solid rgba(43,98,102,.55);color:#789b9d;
+  font-size:9px;letter-spacing:.04em;pointer-events:none
+}
+.viewer-reset{
+  position:absolute;right:12px;top:11px;z-index:5;padding:6px 9px;font-size:9px;
+  background:rgba(5,18,20,.82);backdrop-filter:blur(6px)
+}
+.reference-card{
+  position:absolute;right:12px;bottom:52px;z-index:4;width:150px;height:96px;
+  border:1px solid rgba(66,126,130,.8);border-radius:9px;overflow:hidden;background:#071214;
+  box-shadow:0 8px 20px rgba(0,0,0,.36)
+}
+.reference-label{
+  position:absolute;left:5px;top:5px;z-index:2;padding:3px 5px;border-radius:5px;
+  background:rgba(4,13,14,.82);color:#b8dddd;font-size:7px;letter-spacing:.09em
+}
+.reference-render{width:100%;height:100%;object-fit:cover;display:block}
+.stage-3d .palette{bottom:28px;z-index:5}
+.stage-3d .render-note{z-index:5}
+.stage-3d .render-name{z-index:5}
+@media(max-width:620px){
+  .reference-card{width:118px;height:76px;bottom:49px}
+  .viewer-help{display:none}
+}
