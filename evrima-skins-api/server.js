@@ -32,7 +32,7 @@ const app=http.createServer(async(req,res)=>{
   cors(req,res);if(req.method==="OPTIONS"){res.writeHead(204);return res.end()}
   const url=new URL(req.url,PUBLIC_BASE_URL||`http://${req.headers.host||"localhost"}`);
   try{
-    if(req.method==="GET"&&url.pathname==="/health")return send(res,200,{ok:true,service:"FOGGY Evrima Skin API",version:"0.3.1"});
+    if(req.method==="GET"&&url.pathname==="/health")return send(res,200,{ok:true,service:"FOGGY Evrima Skin API",version:"0.5.0"});
     if(req.method==="GET"&&url.pathname==="/auth/steam"){if(!PUBLIC_BASE_URL||!SESSION_SECRET)return send(res,503,{error:"Steam auth is not configured"});res.writeHead(302,{Location:openidUrl(),"Cache-Control":"no-store"});return res.end()}
     if(req.method==="GET"&&url.pathname==="/auth/steam/callback"){const steam=await verifySteam(url);if(!steam){res.writeHead(302,{Location:FRONTEND_URL+"#auth=failed"});return res.end()}res.writeHead(302,{Location:FRONTEND_URL+"#session="+encodeURIComponent(signSession(steam)),"Cache-Control":"no-store"});return res.end()}
     if(req.method==="GET"&&url.pathname==="/api/me"){const u=user(req);if(!u)return send(res,401,{error:"Steam sign-in required"});return send(res,200,{steam:u.steam})}
@@ -45,7 +45,11 @@ const app=http.createServer(async(req,res)=>{
       for(const f of FIELDS){const h=cleanHex(b.colors&&b.colors[f]);if(!h)return send(res,400,{error:`Invalid ${f} colour`});colors[f]=h.slice(1)}
       const id=crypto.randomUUID();
       for(const old of commands.values())if(old.steam===u.steam&&!["applied","failed"].includes(old.status)){old.status="superseded";old.message="Superseded by a newer request"}
-      const c={id,steam:u.steam,server:SERVER_ID,species:String(b.species||""),colors,status:"queued",message:"Queued",createdAt:Date.now(),deliveredAt:0};
+      const species=String(b.species||"").toLowerCase();
+      const patternIndex=Math.max(0,Math.min(4,Math.floor(Number(b.patternIndex)||0)));
+      const skinVariation=Math.max(0,Math.min(2,Math.floor(Number(b.skinVariation)||0)));
+      const themeIndex=Math.max(0,Math.min(1,Math.floor(Number(b.themeIndex)||0)));
+      const c={id,steam:u.steam,server:SERVER_ID,species,patternIndex,skinVariation,themeIndex,colors,status:"queued",message:"Queued",createdAt:Date.now(),deliveredAt:0};
       commands.set(id,c);order.push(id);prune();return send(res,202,{ok:true,id,status:c.status})
     }
     const sm=url.pathname.match(/^\/api\/skins\/status\/([0-9a-f-]+)$/i);
@@ -54,7 +58,7 @@ const app=http.createServer(async(req,res)=>{
     if(req.method==="GET"&&url.pathname==="/api/server/commands"){
       if(!serverAuth(req))return send(res,401,{error:"Invalid server bridge token"});
       prune();const now=Date.now(),out=[];
-      for(const id of order){const c=commands.get(id);if(!c)continue;if(c.status==="queued"||(c.status==="delivered"&&now-c.deliveredAt>10000)){c.status="delivered";c.deliveredAt=now;out.push({id:c.id,steam:c.steam,species:c.species,colors:c.colors});if(out.length>=25)break}}
+      for(const id of order){const c=commands.get(id);if(!c)continue;if(c.status==="queued"||(c.status==="delivered"&&now-c.deliveredAt>10000)){c.status="delivered";c.deliveredAt=now;out.push({id:c.id,steam:c.steam,species:c.species,patternIndex:c.patternIndex,skinVariation:c.skinVariation,themeIndex:c.themeIndex,colors:c.colors});if(out.length>=25)break}}
       return send(res,200,{commands:out})
     }
     if(req.method==="POST"&&url.pathname==="/api/server/ack"){

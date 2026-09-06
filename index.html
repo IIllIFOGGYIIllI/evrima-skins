@@ -2,52 +2,142 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#061012"><title>FOGGY Evrima Skin Studio</title>
+<meta name="theme-color" content="#071012"><title>FOGGY Evrima Skin Studio</title>
 <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
 <div class="shell">
 <header class="topbar">
-  <div class="brand"><h1>FOGGY <span>EVRIMA SKIN STUDIO</span></h1><p>Design a skin in your browser and apply it directly to your live dinosaur.</p></div>
-  <div class="statuses"><span id="apiStatus" class="pill warn">API setup pending</span><span id="serverStatus" class="pill warn">Server status unknown</span><span class="pill">Web v0.4.0</span></div>
+  <div class="brand">
+    <div class="eyebrow">FOGGY EVRIMA PvE</div>
+    <h1>SKIN <span>CREATOR</span></h1>
+    <p>Build, preview, save and apply a custom skin directly to your live dinosaur.</p>
+  </div>
+  <div class="statuses">
+    <span id="apiStatus" class="pill warn">API checking…</span>
+    <span id="serverStatus" class="pill warn">Bridge checking…</span>
+    <span class="pill">Web v0.5.0</span>
+  </div>
 </header>
-<main class="layout">
-<section class="panel preview">
-  <div class="title"><h2>Species Preview</h2><span id="category" class="pill">Apex Carnivore</span></div>
-  <div class="toolbar"><select id="species"></select><button id="randomSpecies">Random species</button></div>
-  <div class="stage stage-3d">
-    <span id="renderName" class="render-name">Tyrannosaurus</span>
-    <div id="viewerLoading" class="viewer-loading">Loading 3D preview…</div>
-    <canvas id="dino3d" class="dino3d" aria-label="Interactive 3D dinosaur skin preview"></canvas>
-    <div class="viewer-help">Drag to rotate · wheel to zoom</div>
-    <button id="resetView" class="viewer-reset" type="button">Reset view</button>
 
-    <div class="reference-card" title="Actual selected species reference render">
-      <div class="reference-label">EVRIMA REFERENCE</div>
-      <img id="dinoRender" class="reference-render" alt="Selected Evrima dinosaur reference render">
+<div class="creator-shell">
+  <section class="panel preview-panel">
+    <div class="panel-head">
+      <div>
+        <div class="kicker">DINOSAUR PREVIEW</div>
+        <h2 id="previewTitle">Tyrannosaurus</h2>
+      </div>
+      <span id="category" class="pill">Apex Carnivore</span>
     </div>
 
-    <div id="palette" class="palette"></div>
-    <div class="render-note">LIVE 3D COLOUR PREVIEW · ACTUAL SPECIES REFERENCE INSET</div>
-  </div>
-  <div class="actions"><button id="apply" class="primary">APPLY TO MY DINOSAUR</button><button id="save">Save Skin</button></div>
-  <div id="result" class="result"></div>
-  <div class="account"><div class="row"><div><strong id="accountTitle">Steam not linked</strong><div id="accountDetail" class="small">Sign in once. Your game remains completely vanilla.</div></div><button id="steam">Sign in with Steam</button></div></div>
-  <div class="note"><strong style="color:#e8ffff">3D Preview:</strong> colour changes now update the interactive model immediately. The geometry is a species-specific browser model built for this creator, while the inset shows the actual selected Evrima species as a visual reference. The game's exact proprietary mesh/material masks are not redistributed by this site, so the final authoritative result remains your live dinosaur after Apply.</div>
-</section>
-<section class="panel creator">
-  <div class="title"><h2>Skin Colours</h2><span class="pill">10 server-controlled regions</span></div>
-  <div class="section">Server Presets</div><div id="presets" class="presets"></div>
-  <div class="quick"><button id="natural">Natural random</button><button id="vivid">Vivid random</button><button id="reset">Reset palette</button></div>
-  <div id="colors" class="colors"></div>
-  <div class="section">My Browser Presets</div>
-  <div class="saved"><input id="skinName" type="text" maxlength="32" placeholder="Name this skin"><select id="saved"><option value="">No saved skins yet</option></select><button id="delete">Delete</button></div>
-  <div class="section">Share / Backup</div>
-  <div class="saved"><input id="shareCode" class="hex" type="text" placeholder="FGY1:..."><button id="import">Import</button><button id="copy">Copy Code</button></div>
-</section>
-</main>
-<div class="footer">FOGGY Evrima PvE · GitHub Pages frontend · direct HTTPS bridge to your dedicated server</div>
+    <div class="species-row">
+      <select id="species"></select>
+      <button id="randomSpecies">Random species</button>
+    </div>
+
+    <div class="preview-stage" id="previewStage">
+      <img id="dinoRender" class="dino-render" alt="Selected Evrima dinosaur render">
+      <div id="overlayBody" class="skin-overlay ov-body"></div>
+      <div id="overlayFlank" class="skin-overlay ov-flank"></div>
+      <div id="overlayBelly" class="skin-overlay ov-belly"></div>
+      <div id="overlayMarkings" class="skin-overlay ov-markings pattern-0"></div>
+      <div id="overlayDetail" class="skin-overlay ov-detail"></div>
+      <div id="overlayBreed" class="skin-overlay ov-breed"></div>
+      <div class="preview-vignette"></div>
+      <div class="preview-badge">LIVE COLOUR PREVIEW</div>
+      <div id="palette" class="palette"></div>
+    </div>
+
+    <div class="preview-controls">
+      <label>Preview strength <input id="previewStrength" type="range" min="0" max="100" value="62"></label>
+      <label>Lighting <input id="lighting" type="range" min="35" max="130" value="100"></label>
+      <label>Zoom <input id="previewZoom" type="range" min="100" max="145" value="100"></label>
+    </div>
+
+    <div class="apply-grid">
+      <button id="apply" class="primary">APPLY TO MY DINOSAUR</button>
+      <button id="save">SAVE SKIN</button>
+    </div>
+    <div id="result" class="result"></div>
+
+    <div class="account">
+      <div>
+        <strong id="accountTitle">Steam not linked</strong>
+        <span id="accountDetail">Sign in once. No client mod or download required.</span>
+      </div>
+      <button id="steam">Sign in with Steam</button>
+    </div>
+  </section>
+
+  <section class="panel editor-panel">
+    <div class="editor-top">
+      <div>
+        <div class="kicker">MY CUSTOM SKIN</div>
+        <input id="skinName" class="skin-name" type="text" maxlength="32" placeholder="Untitled skin">
+      </div>
+      <div class="history-buttons"><button id="undo">Undo</button><button id="redo">Redo</button></div>
+    </div>
+
+    <div class="config-grid">
+      <div class="config-card">
+        <span>PATTERN</span>
+        <div id="patternButtons" class="pattern-buttons"></div>
+      </div>
+      <div class="config-card">
+        <span>VARIATION</span>
+        <select id="variation"><option value="0">Small</option><option value="1" selected>Medium</option><option value="2">Large</option></select>
+      </div>
+      <div class="config-card">
+        <span>THEME</span>
+        <select id="theme"><option value="0">Default</option><option value="1">Secondary</option></select>
+      </div>
+      <div class="config-card">
+        <span>PREVIEW SEX</span>
+        <div class="segmented"><button id="malePreview" class="active">Male</button><button id="femalePreview">Female</button></div>
+      </div>
+    </div>
+
+    <div class="section-title">
+      <span>COLOURS</span>
+      <div class="preset-actions">
+        <button id="natural">Naturalize</button><button id="vivid">Vivid</button><button id="reset">Reset</button>
+      </div>
+    </div>
+
+    <div id="presets" class="presets"></div>
+
+    <div class="color-groups">
+      <div>
+        <h3>Core skin</h3>
+        <div id="coreColors" class="colors"></div>
+      </div>
+      <div>
+        <h3>Fine details</h3>
+        <div id="detailColors" class="colors"></div>
+      </div>
+    </div>
+
+    <div class="saved-section">
+      <div class="section-title"><span>SAVED SKINS</span></div>
+      <div class="saved-row">
+        <select id="saved"><option value="">No saved skins yet</option></select>
+        <button id="loadSaved">Load</button><button id="delete">Delete</button>
+      </div>
+    </div>
+
+    <details class="advanced">
+      <summary>Share / advanced</summary>
+      <div class="share-row">
+        <input id="shareCode" class="hex" type="text" placeholder="FGY2:...">
+        <button id="import">Import</button><button id="copy">Copy code</button>
+      </div>
+      <p>Pattern and variation are included in direct website Apply requests. The share code is only for backup/sharing.</p>
+    </details>
+  </section>
+</div>
+
+<div class="footer">FOGGY Evrima PvE · GitHub Pages + Railway + private outbound server bridge</div>
 </div>
 <div id="toast" class="toast"></div>
-<script src="./config.js"></script><script type="module" src="./preview3d.js"></script><script src="./app.js"></script>
+<script src="./config.js"></script><script src="./app.js"></script>
 </body></html>
