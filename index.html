@@ -1,33 +1,46 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#071012"><title>FOGGY Evrima Skin Studio</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b0e0a">
+<title>FOGGY Evrima Skin Studio</title>
 <link rel="stylesheet" href="./styles.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.185.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.0/examples/jsm/"
+  }
+}
+</script>
 </head>
 <body>
 <div class="shell">
 <header class="topbar">
-  <div class="brand">
+  <div>
     <div class="eyebrow">FOGGY EVRIMA PvE</div>
     <h1>SKIN <span>CREATOR</span></h1>
-    <p>Build, preview, save and apply a custom skin directly to your live dinosaur.</p>
+    <p>Build a skin visually, save it, then apply it directly to your live dinosaur.</p>
   </div>
   <div class="statuses">
-    <span id="apiStatus" class="pill warn">API checking…</span>
-    <span id="serverStatus" class="pill warn">Bridge checking…</span>
-    <span class="pill">Web v0.5.0</span>
+    <span id="apiStatus" class="status warn">API checking…</span>
+    <span id="serverStatus" class="status warn">Bridge checking…</span>
+    <span class="status">Web v0.6.1</span>
   </div>
 </header>
 
-<div class="creator-shell">
-  <section class="panel preview-panel">
+<main class="creator">
+  <section class="preview-panel panel">
     <div class="panel-head">
       <div>
         <div class="kicker">DINOSAUR PREVIEW</div>
         <h2 id="previewTitle">Tyrannosaurus</h2>
       </div>
-      <span id="category" class="pill">Apex Carnivore</span>
+      <div class="preview-meta">
+        <span id="categoryBadge" class="chip-label">Apex Carnivore</span>
+        <span id="modelBadge" class="chip-label model-loading">Loading 3D…</span>
+      </div>
     </div>
 
     <div class="species-row">
@@ -35,109 +48,163 @@
       <button id="randomSpecies">Random species</button>
     </div>
 
-    <div class="preview-stage" id="previewStage">
-      <img id="dinoRender" class="dino-render" alt="Selected Evrima dinosaur render">
-      <div id="overlayBody" class="skin-overlay ov-body"></div>
-      <div id="overlayFlank" class="skin-overlay ov-flank"></div>
-      <div id="overlayBelly" class="skin-overlay ov-belly"></div>
-      <div id="overlayMarkings" class="skin-overlay ov-markings pattern-0"></div>
-      <div id="overlayDetail" class="skin-overlay ov-detail"></div>
-      <div id="overlayBreed" class="skin-overlay ov-breed"></div>
-      <div class="preview-vignette"></div>
-      <div class="preview-badge">LIVE COLOUR PREVIEW</div>
-      <div id="palette" class="palette"></div>
+    <div id="viewerShell" class="viewer-shell scene-jungle">
+      <canvas id="viewer3d" aria-label="Interactive dinosaur skin preview"></canvas>
+      <img id="fallbackImage" class="fallback-image" alt="Evrima species reference">
+      <div id="viewerLoading" class="viewer-loading">
+        <div class="spinner"></div>
+        <span>Loading dinosaur model…</span>
+      </div>
+      <div id="viewerMessage" class="viewer-message"></div>
+      <div class="viewer-topline">
+        <span id="viewerSpecies">Tyrannosaurus</span>
+        <div class="viewer-actions">
+          <button id="resetCamera" class="tiny">Reset camera</button>
+          <button id="toggle3d" class="tiny active">3D: On</button>
+        </div>
+      </div>
+
+      <div class="scene-controls">
+        <div class="scene-title">SCENE</div>
+        <label class="switch-row">
+          <span>Background</span>
+          <input id="backgroundEnabled" type="checkbox" checked>
+        </label>
+        <label>
+          <span>Scene</span>
+          <select id="sceneSelect">
+            <option value="jungle">Jungle clearing</option>
+            <option value="lagoon">Lagoon</option>
+            <option value="studio">Dark studio</option>
+            <option value="night">Night forest</option>
+          </select>
+        </label>
+        <label>
+          <span>Backdrop brightness <b id="brightnessValue">82%</b></span>
+          <input id="backdropBrightness" type="range" min="30" max="125" value="82">
+        </label>
+        <label>
+          <span>Lighting <b id="lightingValue">90%</b></span>
+          <input id="lighting" type="range" min="35" max="140" value="90">
+        </label>
+        <label class="switch-row">
+          <span>Idle animation</span>
+          <input id="idleEnabled" type="checkbox" checked>
+        </label>
+      </div>
+
+      <div class="viewer-hint">Drag to rotate · wheel to zoom</div>
+      <div id="paletteBar" class="palette-bar"></div>
     </div>
 
-    <div class="preview-controls">
-      <label>Preview strength <input id="previewStrength" type="range" min="0" max="100" value="62"></label>
-      <label>Lighting <input id="lighting" type="range" min="35" max="130" value="100"></label>
-      <label>Zoom <input id="previewZoom" type="range" min="100" max="145" value="100"></label>
-    </div>
-
-    <div class="apply-grid">
+    <div class="apply-row">
       <button id="apply" class="primary">APPLY TO MY DINOSAUR</button>
-      <button id="save">SAVE SKIN</button>
+      <button id="saveSkin">SAVE SKIN</button>
     </div>
     <div id="result" class="result"></div>
 
-    <div class="account">
+    <div class="account-card">
       <div>
         <strong id="accountTitle">Steam not linked</strong>
-        <span id="accountDetail">Sign in once. No client mod or download required.</span>
+        <span id="accountDetail">Sign in once. No client files or commands are required.</span>
       </div>
-      <button id="steam">Sign in with Steam</button>
+      <button id="steamButton">Sign in with Steam</button>
     </div>
   </section>
 
-  <section class="panel editor-panel">
-    <div class="editor-top">
+  <section class="editor-panel panel">
+    <div class="editor-head">
       <div>
         <div class="kicker">MY CUSTOM SKIN</div>
-        <input id="skinName" class="skin-name" type="text" maxlength="32" placeholder="Untitled skin">
+        <input id="skinName" class="skin-name" maxlength="32" placeholder="Untitled skin">
       </div>
-      <div class="history-buttons"><button id="undo">Undo</button><button id="redo">Redo</button></div>
+      <div class="history">
+        <button id="undo">Undo</button>
+        <button id="redo">Redo</button>
+      </div>
     </div>
 
-    <div class="config-grid">
-      <div class="config-card">
-        <span>PATTERN</span>
+    <div class="creator-options">
+      <section class="option-block pattern-block">
+        <div class="option-title">PATTERN</div>
         <div id="patternButtons" class="pattern-buttons"></div>
-      </div>
-      <div class="config-card">
-        <span>VARIATION</span>
-        <select id="variation"><option value="0">Small</option><option value="1" selected>Medium</option><option value="2">Large</option></select>
-      </div>
-      <div class="config-card">
-        <span>THEME</span>
-        <select id="theme"><option value="0">Default</option><option value="1">Secondary</option></select>
-      </div>
-      <div class="config-card">
-        <span>PREVIEW SEX</span>
-        <div class="segmented"><button id="malePreview" class="active">Male</button><button id="femalePreview">Female</button></div>
-      </div>
+      </section>
+
+      <section class="option-block">
+        <div class="option-title">PATTERN VARIATION</div>
+        <div id="variationButtons" class="segmented">
+          <button data-value="0">Small</button>
+          <button data-value="1" class="active">Medium</button>
+          <button data-value="2">Large</button>
+        </div>
+      </section>
+
+      <section class="option-block">
+        <div class="option-title">THEME</div>
+        <div id="themeButtons" class="segmented">
+          <button data-value="0" class="active">Default</button>
+          <button data-value="1">Secondary</button>
+        </div>
+      </section>
+
+      <section class="option-block">
+        <div class="option-title">PREVIEW SEX</div>
+        <div id="sexButtons" class="segmented">
+          <button data-value="male" class="active">Male</button>
+          <button data-value="female">Female</button>
+        </div>
+      </section>
     </div>
 
-    <div class="section-title">
-      <span>COLOURS</span>
-      <div class="preset-actions">
-        <button id="natural">Naturalize</button><button id="vivid">Vivid</button><button id="reset">Reset</button>
+    <div class="section-head">
+      <div>
+        <div class="kicker">COLOURS</div>
+        <span class="section-sub">All ten server-controlled CustomizerData regions</span>
+      </div>
+      <div class="quick-actions">
+        <button id="naturalize">Naturalize</button>
+        <button id="randomize">Randomize</button>
+        <button id="resetSkin">Reset</button>
       </div>
     </div>
 
     <div id="presets" class="presets"></div>
+    <div id="colors" class="color-list"></div>
 
-    <div class="color-groups">
-      <div>
-        <h3>Core skin</h3>
-        <div id="coreColors" class="colors"></div>
+    <div class="saved-area">
+      <div class="section-head compact">
+        <div>
+          <div class="kicker">SAVED SKINS</div>
+          <span class="section-sub">Saved only in this browser</span>
+        </div>
       </div>
-      <div>
-        <h3>Fine details</h3>
-        <div id="detailColors" class="colors"></div>
-      </div>
-    </div>
-
-    <div class="saved-section">
-      <div class="section-title"><span>SAVED SKINS</span></div>
       <div class="saved-row">
-        <select id="saved"><option value="">No saved skins yet</option></select>
-        <button id="loadSaved">Load</button><button id="delete">Delete</button>
+        <select id="savedSkins"><option value="">No saved skins yet</option></select>
+        <button id="loadSaved">Load</button>
+        <button id="deleteSaved">Delete</button>
       </div>
     </div>
 
     <details class="advanced">
       <summary>Share / advanced</summary>
       <div class="share-row">
-        <input id="shareCode" class="hex" type="text" placeholder="FGY2:...">
-        <button id="import">Import</button><button id="copy">Copy code</button>
+        <input id="shareCode" class="mono" placeholder="FGY2:...">
+        <button id="copyCode">Copy</button>
+        <button id="importCode">Import</button>
       </div>
-      <p>Pattern and variation are included in direct website Apply requests. The share code is only for backup/sharing.</p>
+      <p>The share code is only a portable backup. Website Apply sends structured skin data directly through Railway to your server bridge.</p>
     </details>
   </section>
+</main>
+
+<footer>
+  FOGGY Evrima PvE · real browser 3D preview where a compatible model is available · unsupported species fall back to the exact Evrima reference image
+</footer>
 </div>
 
-<div class="footer">FOGGY Evrima PvE · GitHub Pages + Railway + private outbound server bridge</div>
-</div>
 <div id="toast" class="toast"></div>
-<script src="./config.js"></script><script src="./app.js"></script>
-</body></html>
+<script src="./config.js"></script>
+<script type="module" src="./viewer3d.js"></script>
+<script src="./app.js"></script>
+</body>
+</html>
