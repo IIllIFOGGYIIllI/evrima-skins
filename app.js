@@ -26,7 +26,7 @@ const HQ_AVAILABLE=new Set(["tyrannosaurus"]);
 
 let colors={...DEFAULTS};
 let selected=SPECIES[0],patternIndex=0,skinVariation=1,themeIndex=0,previewSex="male";
-let previewMode="hq";
+let previewMode="skin3d";
 let session=localStorage.getItem("foggy_skin_session")||"",me=null;
 let history=[],future=[],historyLock=false;
 const $=id=>document.getElementById(id);
@@ -245,13 +245,25 @@ function importCode(raw){
   renderAll();toast("Skin imported");
 }
 
+const API_TIMEOUT_MS=8000;
 async function api(path,opt={}){
   if(!API_READY)throw Error("Skin API is not configured");
   const headers={...(opt.headers||{})};if(session)headers.Authorization="Bearer "+session;
   if(opt.body)headers["Content-Type"]="application/json";
-  const r=await fetch(API+path,{...opt,headers});let d={};
-  try{d=await r.json();}catch{}
-  if(!r.ok)throw Error(d.error||`Request failed (${r.status})`);return d;
+
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),API_TIMEOUT_MS);
+  try{
+    const r=await fetch(API+path,{...opt,headers,signal:controller.signal});let d={};
+    try{d=await r.json();}catch{}
+    if(!r.ok)throw Error(d.error||`Request failed (${r.status})`);
+    return d;
+  }catch(e){
+    if(e?.name==="AbortError")throw Error("Skin API timed out");
+    throw e;
+  }finally{
+    clearTimeout(timer);
+  }
 }
 function readAuthHash(){
   const h=new URLSearchParams(location.hash.replace(/^#/,"")),t=h.get("session");
@@ -265,10 +277,20 @@ async function refreshMe(){
   try{me=await api("/api/me");$("accountTitle").textContent="Steam linked";$("accountDetail").textContent="SteamID64 "+me.steam;$("steamButton").textContent="Sign out";}
   catch{session="";localStorage.removeItem("foggy_skin_session");me=null;refreshMe();}
 }
+let statusRefreshBusy=false;
 async function refreshServerStatus(){
-  if(!API_READY)return;
-  try{const d=await api("/api/public/status");$("serverStatus").textContent=d.online?"FOGGY server bridge online":"FOGGY server bridge offline";$("serverStatus").className=d.online?"status good":"status bad";}
-  catch{$("serverStatus").textContent="Bridge status unavailable";$("serverStatus").className="status warn";}
+  if(!API_READY||statusRefreshBusy)return;
+  statusRefreshBusy=true;
+  try{
+    const d=await api("/api/public/status");
+    $("serverStatus").textContent=d.online?"FOGGY server bridge online":"FOGGY server bridge offline";
+    $("serverStatus").className=d.online?"status good":"status bad";
+  }catch{
+    $("serverStatus").textContent="Bridge status unavailable";
+    $("serverStatus").className="status warn";
+  }finally{
+    statusRefreshBusy=false;
+  }
 }
 async function pollApply(id){
   const o=$("result");
@@ -295,7 +317,33 @@ async function applySkin(){
   finally{b.disabled=false;}
 }
 
+
+function armViewerWatchdog(){
+  setTimeout(()=>{
+    const loading=$("viewerLoading");
+    if(!loading||loading.classList.contains("hidden"))return;
+
+    const canvas=$("viewer3d"),fallback=$("fallbackImage"),reference=$("referenceImage");
+    const message=$("viewerMessage"),badge=$("modelBadge");
+
+    if(fallback&&!fallback.src&&reference?.src)fallback.src=reference.src;
+    if(canvas)canvas.style.display="none";
+    if(fallback)fallback.style.display="block";
+    loading.classList.add("hidden");
+
+    if(message){
+      message.textContent="3D preview timed out. Showing the Evrima reference instead.";
+      message.classList.add("show");
+    }
+    if(badge){
+      badge.textContent="3D TIMEOUT · REFERENCE SHOWN";
+      badge.className="chip-label model-error";
+    }
+  },12000);
+}
+
 buildSpecies();buildColors();buildPresets();refreshSaved();readAuthHash();renderAll();refreshMe();refreshServerStatus();
+armViewerWatchdog();
 setInterval(refreshServerStatus,10000);
 
 $("species").onchange=e=>{pushHistory();selected=SPECIES.find(s=>s.slug===e.target.value)||SPECIES[0];patternIndex=0;renderAll();};

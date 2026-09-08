@@ -267,9 +267,35 @@ function setCamera(nextMode){
   }
   camera.updateProjectionMatrix();controls.update();
 }
+const MODEL_TIMEOUT_MS=10000;
 function loadGLTF(url){
   if(cache.has(url))return cache.get(url);
-  const p=new Promise((resolve,reject)=>loader.load(url,resolve,undefined,reject));cache.set(url,p);return p;
+
+  const p=new Promise((resolve,reject)=>{
+    let settled=false;
+    const finish=(fn,value)=>{
+      if(settled)return;
+      settled=true;
+      clearTimeout(timer);
+      fn(value);
+    };
+    const timer=setTimeout(()=>{
+      cache.delete(url);
+      finish(reject,new Error("3D model load timed out"));
+    },MODEL_TIMEOUT_MS);
+
+    loader.load(
+      url,
+      gltf=>finish(resolve,gltf),
+      undefined,
+      err=>{
+        cache.delete(url);
+        finish(reject,err);
+      }
+    );
+  });
+  cache.set(url,p);
+  return p;
 }
 async function loadCurrent(){
   if(!state)return;
