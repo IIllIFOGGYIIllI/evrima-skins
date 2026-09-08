@@ -26,6 +26,8 @@ const HQ_AVAILABLE=new Set(["tyrannosaurus"]);
 
 let colors={...DEFAULTS};
 let selected=SPECIES[0],patternIndex=0,skinVariation=1,themeIndex=0,previewSex="male";
+// ThemeIndex is intentionally fixed at 0 in production. Current Evrima
+// showed no visible Default/Secondary difference in preview or live gameplay.
 let previewMode="skin3d";
 let session=localStorage.getItem("foggy_skin_session")||"",me=null;
 let history=[],future=[],historyLock=false;
@@ -70,7 +72,7 @@ function restore(s){
   selected=SPECIES.find(x=>x.slug===s.species)||selected;
   patternIndex=Math.min(Number(s.patternIndex)||0,selected.patterns-1);
   skinVariation=Math.min(2,Math.max(0,Number(s.skinVariation)||0));
-  themeIndex=Math.min(1,Math.max(0,Number(s.themeIndex)||0));
+  themeIndex=0;
   previewSex=s.previewSex==="female"?"female":"male";
   $("species").value=selected.slug;
   renderAll();
@@ -123,7 +125,6 @@ function renderPatternButtons(){
 }
 function renderSegmented(){
   document.querySelectorAll("#variationButtons button").forEach(b=>b.classList.toggle("active",Number(b.dataset.value)===skinVariation));
-  document.querySelectorAll("#themeButtons button").forEach(b=>b.classList.toggle("active",Number(b.dataset.value)===themeIndex));
   document.querySelectorAll("#sexButtons button").forEach(b=>b.classList.toggle("active",b.dataset.value===previewSex));
 }
 function renderColors(){
@@ -240,7 +241,7 @@ function importCode(raw){
   if(!m){toast("Invalid FGY2 code");return;}
   const sp=SPECIES.find(s=>s.slug===m[1]);if(!sp){toast("Unknown species");return;}
   pushHistory();selected=sp;patternIndex=Math.min(Number(m[2]),sp.patterns-1);
-  skinVariation=Math.min(2,Number(m[3]));themeIndex=Math.min(1,Number(m[4]));
+  skinVariation=Math.min(2,Number(m[3]));themeIndex=0;
   const p=m[5].split("-");SLOTS.forEach((s,i)=>colors[s.key]="#"+p[i].toUpperCase());
   renderAll();toast("Skin imported");
 }
@@ -310,7 +311,7 @@ async function applySkin(){
   const b=$("apply");b.disabled=true;o.textContent="Sending skin to your server…";o.className="result show";
   try{
     const d=await api("/api/skins/apply",{method:"POST",body:JSON.stringify({
-      species:selected.slug,patternIndex,skinVariation,themeIndex,colors
+      species:selected.slug,patternIndex,skinVariation,themeIndex:0,colors
     })});
     o.textContent="Request queued. Waiting for the Evrima server…";pollApply(d.id);
   }catch(e){o.textContent=e.message;o.className="result show err";}
@@ -349,7 +350,6 @@ setInterval(refreshServerStatus,10000);
 $("species").onchange=e=>{pushHistory();selected=SPECIES.find(s=>s.slug===e.target.value)||SPECIES[0];patternIndex=0;renderAll();};
 $("randomSpecies").onclick=()=>{pushHistory();selected=SPECIES[Math.floor(Math.random()*SPECIES.length)];patternIndex=0;renderAll();};
 document.querySelectorAll("#variationButtons button").forEach(b=>b.onclick=()=>{pushHistory();skinVariation=Number(b.dataset.value);renderAll();});
-document.querySelectorAll("#themeButtons button").forEach(b=>b.onclick=()=>{pushHistory();themeIndex=Number(b.dataset.value);renderAll();});
 document.querySelectorAll("#sexButtons button").forEach(b=>b.onclick=()=>{previewSex=b.dataset.value;renderAll();});
 $("naturalize").onclick=naturalize;$("randomize").onclick=randomize;
 $("resetSkin").onclick=()=>{pushHistory();colors={...DEFAULTS};patternIndex=0;skinVariation=1;themeIndex=0;renderAll();toast("Skin reset");};
