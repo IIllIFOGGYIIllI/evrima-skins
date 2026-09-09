@@ -319,32 +319,7 @@ async function applySkin(){
 }
 
 
-function armViewerWatchdog(){
-  setTimeout(()=>{
-    const loading=$("viewerLoading");
-    if(!loading||loading.classList.contains("hidden"))return;
-
-    const canvas=$("viewer3d"),fallback=$("fallbackImage"),reference=$("referenceImage");
-    const message=$("viewerMessage"),badge=$("modelBadge");
-
-    if(fallback&&!fallback.src&&reference?.src)fallback.src=reference.src;
-    if(canvas)canvas.style.display="none";
-    if(fallback)fallback.style.display="block";
-    loading.classList.add("hidden");
-
-    if(message){
-      message.textContent="3D preview timed out. Showing the Evrima reference for this species instead.";
-      message.classList.add("show");
-    }
-    if(badge){
-      badge.textContent="3D TIMEOUT · REFERENCE SHOWN";
-      badge.className="chip-label model-error";
-    }
-  },12000);
-}
-
 buildSpecies();buildColors();buildPresets();refreshSaved();readAuthHash();renderAll();refreshMe();refreshServerStatus();
-armViewerWatchdog();
 setInterval(refreshServerStatus,10000);
 
 $("species").onchange=e=>{pushHistory();selected=SPECIES.find(s=>s.slug===e.target.value)||SPECIES[0];patternIndex=0;renderAll();};

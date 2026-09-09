@@ -2,12 +2,11 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { clone as skeletonClone } from "three/addons/utils/SkeletonUtils.js";
-import { EVRIMA_MODELS, SHARED } from "./evrima-registry.js?v=081";
+import { EVRIMA_MODELS, SHARED } from "./evrima-registry.js?v=082";
 
 const CFG=window.FOGGY_SKIN_CONFIG||{};
 const API=String(CFG.API_BASE||"").replace(/\/$/,"");
 const API_READY=API.startsWith("https://")&&!API.includes("YOUR-RAILWAY");
-const ASSET_TIMEOUT_MS=30000;
 const MAX_TEX=2048;
 
 const canvas=document.getElementById("viewer3d");
@@ -65,14 +64,18 @@ function showSource(){
 }
 function proxyUrl(url){return API+"/api/assets?url="+encodeURIComponent(url);}
 async function fetchAsset(url){
-  if(!API_READY)throw Error("Railway asset proxy is not configured");
-  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),ASSET_TIMEOUT_MS);
-  try{
-    const r=await fetch(proxyUrl(url),{signal:controller.signal,cache:"force-cache"});
-    if(!r.ok)throw Error(`asset ${r.status}: ${url.split("/").pop()}`);
-    return await r.arrayBuffer();
-  }catch(e){if(e?.name==="AbortError")throw Error("Evrima asset request timed out");throw e;}
-  finally{clearTimeout(timer);}
+  if(!API_READY)throw Error("Railway asset service is not configured");
+  let r;
+  try{r=await fetch(proxyUrl(url),{cache:"force-cache"})}
+  catch{throw Error("Railway asset service is temporarily unreachable")}
+  if(!r.ok){
+    let detail="";try{detail=String((await r.json())?.error||"")}catch{}
+    if(r.status===504)throw Error(detail||"Evrima asset CDN stalled; retry the preview");
+    if(r.status===502)throw Error(detail||"Evrima asset CDN is temporarily unavailable");
+    if(r.status===404)throw Error("This Evrima preview asset was not found");
+    throw Error(detail||`Evrima asset request failed (${r.status})`);
+  }
+  return r.arrayBuffer();
 }
 function remember(map,key,value){
   if(map.size>=CACHE_MAX&&!map.has(key))map.delete(map.keys().next().value);
@@ -151,19 +154,19 @@ function compositeNormal(base,detail,detailScale){
 }
 function statePatternKey(entry){const requested=String((Number(state?.patternIndex)||0)+1);return entry.patterns[requested]?requested:Object.keys(entry.patterns)[0];}
 function skinKey(entry){return `${entry.name}|${statePatternKey(entry)}|${Object.values(state?.colors||{}).join(",")}`;}
-async function buildSkin(entry){
+async function buildSkin(entry,onStage=()=>{}){
   const key=skinKey(entry);if(skinCache.has(key))return skinCache.get(key);
   const p=(async()=>{
     const pk=statePatternKey(entry),patternUrl=entry.patterns[pk];
-    // The public viewer port documents per-pattern TMC masks. The registry also
-    // carries a generic maskMap for some species, which is used only as a
-    // fallback when no per-pattern mask exists.
     const tmcUrl=entry.patternMasks?.[pk]||entry.maskMap||null;
-    const [pattern,tmc,rac,normal,detail]=await Promise.all([
-      loadImageData(patternUrl),tmcUrl?loadImageData(tmcUrl).catch(()=>null):null,
-      loadImageData(entry.racMap).catch(()=>null),loadImageData(entry.normalMap).catch(()=>null),
-      loadImageData(SHARED.detailNormal).catch(()=>null)
-    ]);
+    onStage("Loading source pattern…");
+    const pattern=await loadImageData(patternUrl);
+    let tmc=null,rac=null,normal=null,detail=null;
+    if(tmcUrl){onStage("Loading material mask…");tmc=await loadImageData(tmcUrl).catch(()=>null);}
+    onStage("Loading cavity map…");rac=await loadImageData(entry.racMap).catch(()=>null);
+    onStage("Loading species normal map…");normal=await loadImageData(entry.normalMap).catch(()=>null);
+    onStage("Loading skin detail normal…");detail=await loadImageData(SHARED.detailNormal).catch(()=>null);
+    onStage("Building Evrima material…");
     return{map:compositeMap(pattern,state.colors,tmc,rac),normal:normal&&detail?compositeNormal(normal,detail,entry.detailScale||12):(normal?toCanvas(normal):null)};
   })();
   p.catch(()=>skinCache.delete(key));return remember(skinCache,key,p);
@@ -205,9 +208,11 @@ async function buildScene(){
     emitStatus("fallback","EVRIMA REFERENCE · EXACT 3D PENDING");clearSource();return;
   }
   currentEntry=entry;currentSlug=slug;canvas.style.display="block";fallback.style.display="none";showMessage("");
-  showLoading(true,`Loading ${entry.name} Evrima assets…`);emitStatus("loading","LOADING EVRIMA ASSETS…");
+  showLoading(true,`Downloading ${entry.name} model…`);emitStatus("loading","LOADING EVRIMA MODEL…");
   try{
-    const [gltf,skin]=await Promise.all([loadGltf(entry),buildSkin(entry)]);if(gen!==generation)return;
+    const gltf=await loadGltf(entry);if(gen!==generation)return;
+    showLoading(true,`Loading ${entry.name} skin maps…`);emitStatus("loading","LOADING EVRIMA SKIN MAPS…");
+    const skin=await buildSkin(entry,stage=>showLoading(true,stage));if(gen!==generation)return;
     disposeRoot();currentEntry=entry;currentSlug=slug;currentMode=state?.mode==="2d"?"2d":state?.mode==="hq"?"hq":"skin3d";
     makeMaterials(skin);root=skeletonClone(gltf.scene);root.name="FOGGY_EvrimaPreview";applyMaterials(root);
     root.scale.setScalar(entry.glbScale);root.position.set(...entry.glbPosition);root.rotation.set(0,-Math.PI/6,0);scene.add(root);
@@ -215,14 +220,15 @@ async function buildScene(){
     const pattern=Number(state.patternIndex||0)+1;emitStatus("exact",`EVRIMA SOURCE 3D · PATTERN ${pattern}`);
   }catch(e){
     if(gen!==generation)return;console.error("[FOGGY Evrima Preview]",e);disposeRoot();canvas.style.display="none";fallback.style.display="block";showLoading(false);
-    showMessage("The Evrima asset request failed. This build requires the Railway v0.6.0 asset proxy; showing the reference image instead.");emitStatus("error","EVRIMA ASSET LOAD FAILED");
+    const reason=String(e?.message||"Evrima preview asset failed");
+    showMessage(reason+". Showing the Evrima reference for now; retrying later will use any cached assets.");emitStatus("error","EVRIMA ASSET LOAD FAILED");
   }
 }
 async function refreshSkinOnly(){
   if(!root||!currentEntry)return buildScene();
   const gen=++generation;showLoading(true,"Updating Evrima skin texture…");
   try{
-    const skin=await buildSkin(currentEntry);if(gen!==generation)return;
+    const skin=await buildSkin(currentEntry,stage=>showLoading(true,stage));if(gen!==generation)return;
     disposeMaterialTextures();makeMaterials(skin);applyMaterials(root);showLoading(false);
     emitStatus("exact",`EVRIMA SOURCE 3D · PATTERN ${Number(state.patternIndex||0)+1}`);
   }catch(e){if(gen!==generation)return;console.error("[FOGGY Evrima Skin]",e);showLoading(false);showMessage("Skin texture update failed; the last successful preview is still displayed.");}

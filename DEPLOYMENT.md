@@ -1,8 +1,8 @@
 # Deployment
 
-## v0.8.1 update order
+## v0.8.2 update order
 
-This release changes both GitHub Pages and the Railway API. Deploy **Railway first or in the same Git commit**. Until Railway v0.6.0 is live, the new preview correctly falls back because `/api/assets` does not exist yet.
+This release fixes the live Railway asset transport and the GitHub Pages loading strategy. Commit the Railway and frontend files together so the service redeploys before/while Pages refreshes. No environment-variable change is required.
 
 ### Files to replace / add
 
@@ -11,10 +11,9 @@ At repository root:
 - `index.html`
 - `app.js`
 - `viewer3d.js`
-- `evrima-registry.js` **(new)**
 - `README.md`
-- `CHANGELOG.md` **(new if absent)**
-- `DEPLOYMENT.md` **(new if absent)**
+- `CHANGELOG.md`
+- `DEPLOYMENT.md`
 
 Railway folder:
 
@@ -41,7 +40,7 @@ Service root remains:
 
 No new environment variable is required. Existing variables remain unchanged.
 
-After deployment, `/health` should report API version `0.6.0`.
+After deployment, `/health` should report API version `0.6.1`.
 
 ## GitHub Pages
 
@@ -49,7 +48,7 @@ After the commit finishes deploying:
 
 1. Open the live skin creator.
 2. Hard-refresh with `Ctrl + Shift + R`.
-3. Confirm the header shows **Web v0.8.1**.
+3. Confirm the header shows **Web v0.8.2**.
 4. Test Tyrannosaurus first.
 5. Change Pattern 1 → 2 → 3 and confirm the source texture changes.
 6. Test several different species such as Deinosuchus, Omniraptor, Triceratops and Pteranodon.
@@ -59,10 +58,10 @@ Austroraptor intentionally uses its reference image until a verified exact asset
 
 ## Suggested commit messages
 
-For the full v0.8.1 update in one commit:
+For the full v0.8.2 update in one commit:
 
 ```text
-Fix Evrima 3D preview loading
+Fix Evrima asset streaming and preview stability
 ```
 
 If documentation is committed separately:

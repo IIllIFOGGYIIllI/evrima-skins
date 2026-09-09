@@ -8,8 +8,8 @@ Browser skin creator for the **FOGGY Evrima PvE** The Isle: Evrima server.
 
 | Component | Version | State |
 | --- | --- | --- |
-| Website / preview | **v0.8.1** | Researched Evrima renderer |
-| Railway Skin API | **v0.6.0** | Apply API + CORS-safe asset proxy |
+| Website / preview | **v0.8.2** | Researched renderer + stable sequential asset loading |
+| Railway Skin API | **v0.6.1** | Apply API + streamed/cache-backed asset service |
 | Windows bridge | **v0.6.0** | Production safe handoff |
 | UE4SS CustomSkins | **v0.6.1** | Persistence confirmed |
 
@@ -27,9 +27,9 @@ The server-side skin restore has been confirmed after both reconnect and a full 
 
 `ThemeIndex` is intentionally fixed to `0`. `SkinCode` is deliberately untouched.
 
-## v0.8.1 preview renderer
+## v0.8.2 preview renderer
 
-v0.8.1 replaces the guessed CDN/model paths from v0.8.0 with the researched public IslePilot viewer registry and rendering pipeline. The public `theisle-overlay` source documents that registry as extracted verbatim from the official overlay app; its folder names and filenames must **not** be derived from species names.
+v0.8.2 keeps the researched public IslePilot viewer registry and rendering pipeline introduced in v0.8.1, and fixes the first-load transport path that previously timed out and could restart the Railway process. The public `theisle-overlay` source documents that registry as extracted verbatim from the official overlay app; its folder names and filenames must **not** be derived from species names.
 
 The preview pipeline now uses:
 
@@ -42,18 +42,18 @@ The preview pipeline now uses:
 - teeth / mouth / claw masks where the registry provides them
 - the researched Three.js camera, light and material settings
 
-The IslePilot CDN itself does not provide browser CORS headers. `evrima-skins-api` v0.6.0 therefore exposes a strict allowlisted asset proxy so GitHub Pages can load the exact public assets without disabling browser security.
+The IslePilot CDN itself does not provide browser CORS headers. `evrima-skins-api` v0.6.1 therefore exposes a strict allowlisted asset service. Cache misses are streamed to a `.part` file, renamed only after a complete download, and then served from Railway's ephemeral cache. First-time asset downloads are serialized so large models and textures do not compete with each other. There is no fixed total-transfer timeout; a 30-second **inactivity** timeout only stops a genuinely stalled upstream connection.
 
 **Austroraptor:** the researched public registry currently has no verified Austroraptor 3D entry. The site deliberately shows the Evrima reference image for Austroraptor instead of substituting a fake raptor model.
 
-Pattern Variation is still applied to the live dinosaur by the server. Its exact browser material transform is not public in the researched viewer source, so v0.8.1 does not invent one.
+Pattern Variation is still applied to the live dinosaur by the server. Its exact browser material transform is not public in the researched viewer source, so v0.8.2 does not invent one.
 
 ## Architecture
 
 ```text
 GitHub Pages skin creator
         |
-        +---- GET /api/assets ----> Railway allowlisted IslePilot asset proxy
+        +---- GET /api/assets ----> Railway streamed/cache-backed IslePilot asset service
         |
         +---- POST /api/skins/apply
                            |

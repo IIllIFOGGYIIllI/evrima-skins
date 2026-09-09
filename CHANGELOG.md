@@ -1,5 +1,16 @@
 # Changelog
 
+## Website v0.8.2 / API v0.6.1
+
+- Fixed the 25-second asset abort that could crash the Railway Node process while a model body was still downloading.
+- Replaced whole-buffer upstream fetching with streamed `.part` downloads and atomic rename-on-success caching.
+- Uses a 30-second inactivity timeout instead of a fixed total-transfer deadline.
+- Deduplicates duplicate requests and serializes first-time CDN downloads so large assets do not compete.
+- Removed the independent 12-second browser preview watchdog.
+- Loads the model and skin resources sequentially, matching the researched native viewer cache strategy.
+- Added staged loading messages and accurate CDN / Railway errors instead of incorrectly claiming the backend is outdated.
+- Existing skin Apply, Steam auth, bridge, UE4SS, persistence, registry paths and `config.js` remain unchanged.
+
 ## Website v0.8.1 / API v0.6.0
 
 - Replaced guessed v0.8.0 IslePilot CDN paths with the researched public registry.

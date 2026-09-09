@@ -13,7 +13,12 @@ const commands=new Map(),order=[];
 const rate=new Map();
 let lastHeartbeat=0;
 
-function send(res,status,obj,headers={}){const body=Buffer.from(JSON.stringify(obj));res.writeHead(status,{"Content-Type":"application/json; charset=utf-8","Content-Length":body.length,"Cache-Control":"no-store",...headers});res.end(body)}
+function send(res,status,obj,headers={}){
+  if(res.destroyed)return;
+  if(res.headersSent){res.destroy();return;}
+  const body=Buffer.from(JSON.stringify(obj));
+  res.writeHead(status,{"Content-Type":"application/json; charset=utf-8","Content-Length":body.length,"Cache-Control":"no-store",...headers});res.end(body);
+}
 function cors(req,res){const origin=req.headers.origin||"";let allowed=false;try{allowed=origin===new URL(FRONTEND_URL).origin}catch{}if(/^https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?$/.test(origin))allowed=true;if(allowed){res.setHeader("Access-Control-Allow-Origin",origin);res.setHeader("Vary","Origin");res.setHeader("Access-Control-Allow-Headers","Authorization, Content-Type");res.setHeader("Access-Control-Allow-Methods","GET, POST, OPTIONS")}}
 function bearer(req){const m=String(req.headers.authorization||"").match(/^Bearer\s+(.+)$/i);return m?m[1]:""}
 function b64(x){return Buffer.from(x).toString("base64url")}
@@ -28,49 +33,150 @@ function allowRate(ip){const now=Date.now(),list=(rate.get(ip)||[]).filter(t=>no
 function openidUrl(){const ret=PUBLIC_BASE_URL+"/auth/steam/callback",p=new URLSearchParams({"openid.ns":"http://specs.openid.net/auth/2.0","openid.mode":"checkid_setup","openid.return_to":ret,"openid.realm":PUBLIC_BASE_URL,"openid.identity":"http://specs.openid.net/auth/2.0/identifier_select","openid.claimed_id":"http://specs.openid.net/auth/2.0/identifier_select"});return"https://steamcommunity.com/openid/login?"+p}
 async function verifySteam(url){const p=new URLSearchParams(url.searchParams);p.set("openid.mode","check_authentication");const r=await fetch("https://steamcommunity.com/openid/login",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:p.toString()});const txt=await r.text();if(!/is_valid\s*:\s*true/i.test(txt))return null;const claimed=url.searchParams.get("openid.claimed_id")||"",m=claimed.match(/\/id\/(\d{17})$/);return m?m[1]:null}
 
+const https=require("https");
+const fs=require("fs");
+const fsp=require("fs/promises");
+const os=require("os");
+const path=require("path");
+const {Transform}=require("stream");
+const {pipeline}=require("stream/promises");
+
 const ASSET_HOST="islepilot.eu";
 const ASSET_PREFIX="/cdn/skinviewer/";
 const ASSET_MAX_BYTES=64*1024*1024;
+const ASSET_IDLE_TIMEOUT_MS=30000;
+const ASSET_CACHE_ROOT=path.join(os.tmpdir(),"foggy-evrima-skin-assets");
+const assetInflight=new Map();
+let assetQueue=Promise.resolve();
+
 function assetSource(raw){
   try{
     const u=new URL(String(raw||""));
-    if(u.protocol!=="https:"||u.hostname!==ASSET_HOST||u.username||u.password)return null;
+    if(u.protocol!=="https:"||u.hostname!==ASSET_HOST||u.username||u.password||u.search)return null;
     if(!u.pathname.startsWith(ASSET_PREFIX)||!/[.](?:glb|png|webp)$/i.test(u.pathname))return null;
-    u.hash="";return u;
+    const rawRel=u.pathname.slice(ASSET_PREFIX.length);
+    const parts=rawRel.split("/").map(seg=>decodeURIComponent(seg));
+    if(!parts.length||parts.some(seg=>!seg||seg==="."||seg===".."||seg.includes("\\")||seg.includes("/")||seg.includes("\0")))return null;
+    u.hash="";
+    return{url:u,key:parts.join("/"),parts};
   }catch{return null}
 }
-async function proxyAsset(url,res){
-  const src=assetSource(url.searchParams.get("url"));
-  if(!src)return send(res,400,{error:"Invalid Evrima asset URL"});
-  let upstream;
-  try{upstream=await fetch(src,{headers:{Accept:"*/*","User-Agent":"FOGGY-Evrima-Skin-Studio/0.8.1"},signal:AbortSignal.timeout(25000)})}
-  catch(e){console.error("[FOGGY API] asset upstream failed",src.pathname,e);return send(res,502,{error:"Evrima asset upstream unavailable"})}
-  if(!upstream.ok)return send(res,upstream.status===404?404:502,{error:`Evrima asset upstream ${upstream.status}`});
-  const declared=Number(upstream.headers.get("content-length")||0);
-  if(declared>ASSET_MAX_BYTES)return send(res,413,{error:"Evrima asset too large"});
-  const body=Buffer.from(await upstream.arrayBuffer());
-  if(body.length>ASSET_MAX_BYTES)return send(res,413,{error:"Evrima asset too large"});
+function assetType(file){
+  if(/[.]glb$/i.test(file))return"model/gltf-binary";
+  if(/[.]png$/i.test(file))return"image/png";
+  if(/[.]webp$/i.test(file))return"image/webp";
+  return"application/octet-stream";
+}
+function assetError(message,code="ASSET_UPSTREAM"){
+  const e=new Error(message);e.code=code;return e;
+}
+async function cachedAsset(info){
+  const dest=path.join(ASSET_CACHE_ROOT,...info.parts);
+  try{
+    const st=await fsp.stat(dest);
+    if(st.isFile()&&st.size>0&&st.size<=ASSET_MAX_BYTES)return{path:dest,size:st.size,cache:"HIT"};
+  }catch{}
+  return null;
+}
+function openAssetStream(url,redirects=0){
+  return new Promise((resolve,reject)=>{
+    const req=https.request(url,{method:"GET",headers:{Accept:"*/*","User-Agent":"theisle-overlay/2.0 (your-dino panel reader; personal use)"}},resp=>{
+      const status=Number(resp.statusCode||0);
+      if([301,302,303,307,308].includes(status)&&resp.headers.location){
+        resp.resume();
+        if(redirects>=3)return reject(assetError("Too many asset redirects","ASSET_REDIRECT"));
+        let next;try{next=new URL(resp.headers.location,url)}catch{return reject(assetError("Invalid asset redirect","ASSET_REDIRECT"))}
+        const checked=assetSource(next.toString());
+        if(!checked)return reject(assetError("Blocked asset redirect","ASSET_REDIRECT"));
+        return openAssetStream(checked.url,redirects+1).then(resolve,reject);
+      }
+      if(status<200||status>=300){resp.resume();return reject(assetError(`Evrima asset upstream ${status}`,status===404?"ASSET_404":"ASSET_UPSTREAM"));}
+      const declared=Number(resp.headers["content-length"]||0);
+      if(declared>ASSET_MAX_BYTES){resp.resume();return reject(assetError("Evrima asset too large","ASSET_TOO_LARGE"));}
+      resolve({resp,declared});
+    });
+    req.setTimeout(ASSET_IDLE_TIMEOUT_MS,()=>req.destroy(assetError("Evrima asset upstream stalled","ASSET_TIMEOUT")));
+    req.on("error",reject);
+    req.end();
+  });
+}
+async function downloadAsset(info,dest){
+  await fsp.mkdir(path.dirname(dest),{recursive:true});
+  const tmp=dest+".part";
+  await fsp.rm(tmp,{force:true}).catch(()=>{});
+  let received=0;
+  try{
+    const {resp}=await openAssetStream(info.url);
+    const limiter=new Transform({
+      transform(chunk,enc,cb){
+        received+=chunk.length;
+        if(received>ASSET_MAX_BYTES)return cb(assetError("Evrima asset too large","ASSET_TOO_LARGE"));
+        cb(null,chunk);
+      }
+    });
+    await pipeline(resp,limiter,fs.createWriteStream(tmp,{flags:"w"}));
+    if(received<=0)throw assetError("Evrima asset was empty","ASSET_UPSTREAM");
+    await fsp.rename(tmp,dest);
+    return{path:dest,size:received,cache:"MISS"};
+  }catch(e){
+    await fsp.rm(tmp,{force:true}).catch(()=>{});
+    throw e;
+  }
+}
+async function ensureAsset(info){
+  const hit=await cachedAsset(info);if(hit)return hit;
+  if(assetInflight.has(info.key))return assetInflight.get(info.key);
+  const dest=path.join(ASSET_CACHE_ROOT,...info.parts);
+  const task=assetQueue.then(async()=>{
+    const secondHit=await cachedAsset(info);if(secondHit)return secondHit;
+    return downloadAsset(info,dest);
+  });
+  // Keep all first-time CDN downloads sequential, matching the researched
+  // native viewer's cache warmer so large models/textures never compete.
+  assetQueue=task.catch(()=>{});
+  assetInflight.set(info.key,task);
+  try{return await task}finally{assetInflight.delete(info.key)}
+}
+async function serveAssetFile(res,fileInfo,info){
+  if(res.destroyed)return;
   const headers={
-    "Content-Type":upstream.headers.get("content-type")||"application/octet-stream",
-    "Content-Length":body.length,
-    "Cache-Control":"public, max-age=86400, stale-while-revalidate=604800",
-    "X-Content-Type-Options":"nosniff"
+    "Content-Type":assetType(info.parts.at(-1)),
+    "Content-Length":fileInfo.size,
+    "Cache-Control":"public, max-age=604800, stale-while-revalidate=2592000",
+    "X-Content-Type-Options":"nosniff",
+    "X-FOGGY-Asset-Cache":fileInfo.cache
   };
-  const etag=upstream.headers.get("etag"),last=upstream.headers.get("last-modified");
-  if(etag)headers.ETag=etag;if(last)headers["Last-Modified"]=last;
-  res.writeHead(200,headers);res.end(body);
+  res.writeHead(200,headers);
+  try{await pipeline(fs.createReadStream(fileInfo.path),res)}catch(e){
+    if(!res.destroyed)throw e;
+  }
+}
+async function proxyAsset(url,res){
+  const info=assetSource(url.searchParams.get("url"));
+  if(!info)return send(res,400,{error:"Invalid Evrima asset URL"});
+  try{
+    const fileInfo=await ensureAsset(info);
+    return await serveAssetFile(res,fileInfo,info);
+  }catch(e){
+    console.error("[FOGGY API] asset failed",info.key,e?.code||"",e?.message||e);
+    if(res.destroyed)return;
+    if(e?.code==="ASSET_404")return send(res,404,{error:"Evrima asset not found"});
+    if(e?.code==="ASSET_TOO_LARGE")return send(res,413,{error:"Evrima asset too large"});
+    if(e?.code==="ASSET_TIMEOUT")return send(res,504,{error:"Evrima asset CDN stalled; retry the preview"});
+    return send(res,502,{error:"Evrima asset CDN temporarily unavailable"});
+  }
 }
 
 const app=http.createServer(async(req,res)=>{
   cors(req,res);if(req.method==="OPTIONS"){res.writeHead(204);return res.end()}
   const url=new URL(req.url,PUBLIC_BASE_URL||`http://${req.headers.host||"localhost"}`);
   try{
-    if(req.method==="GET"&&url.pathname==="/health")return send(res,200,{ok:true,service:"FOGGY Evrima Skin API",version:"0.6.0"});
+    if(req.method==="GET"&&url.pathname==="/health")return send(res,200,{ok:true,service:"FOGGY Evrima Skin API",version:"0.6.1"});
     if(req.method==="GET"&&url.pathname==="/auth/steam"){if(!PUBLIC_BASE_URL||!SESSION_SECRET)return send(res,503,{error:"Steam auth is not configured"});res.writeHead(302,{Location:openidUrl(),"Cache-Control":"no-store"});return res.end()}
     if(req.method==="GET"&&url.pathname==="/auth/steam/callback"){const steam=await verifySteam(url);if(!steam){res.writeHead(302,{Location:FRONTEND_URL+"#auth=failed"});return res.end()}res.writeHead(302,{Location:FRONTEND_URL+"#session="+encodeURIComponent(signSession(steam)),"Cache-Control":"no-store"});return res.end()}
     if(req.method==="GET"&&url.pathname==="/api/me"){const u=user(req);if(!u)return send(res,401,{error:"Steam sign-in required"});return send(res,200,{steam:u.steam})}
     if(req.method==="GET"&&url.pathname==="/api/public/status")return send(res,200,{server:SERVER_ID,online:Date.now()-lastHeartbeat<15000,lastHeartbeat:lastHeartbeat||null});
-    if(req.method==="GET"&&url.pathname==="/api/assets")return proxyAsset(url,res);
+    if(req.method==="GET"&&url.pathname==="/api/assets")return await proxyAsset(url,res);
 
     if(req.method==="POST"&&url.pathname==="/api/skins/apply"){
       const u=user(req);if(!u)return send(res,401,{error:"Steam sign-in required"});
