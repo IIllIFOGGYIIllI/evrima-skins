@@ -31,6 +31,7 @@ let selected=SPECIES[0],patternIndex=0,skinVariation=1,themeIndex=0,previewSex="
 let previewMode="skin3d";
 let session=localStorage.getItem("foggy_skin_session")||"",me=null;
 let history=[],future=[],historyLock=false;
+let cloudLibrary={skins:[],lastApplied:null},activeCloudId="",bridgeOnline=false,cloudBusy=false;
 const $=id=>document.getElementById(id);
 
 function toast(m){
@@ -227,20 +228,21 @@ function refreshSaved(){
   if(!names.length){sel.append(new Option("No saved skins yet",""));return;}
   sel.append(new Option("Choose saved skin…",""));names.forEach(n=>sel.append(new Option(n,n)));
 }
-function saveSkin(){
+async function saveSkin(){
   const n=$("skinName").value.trim()||`${selected.name} Skin`,d=savedDb();
   d[n]=snapshot();localStorage.setItem("foggy_skin_presets_v60",JSON.stringify(d));
-  refreshSaved();$("savedSkins").value=n;$("skinName").value=n;toast("Skin saved");
+  refreshSaved();$("savedSkins").value=n;$("skinName").value=n;
+  if(me){toast("Saved locally · syncing Steam library");await saveCurrentCloud(false);}else toast("Saved in this browser");
 }
 function loadSaved(){
   const n=$("savedSkins").value,d=savedDb()[n];if(!d)return;
-  pushHistory();restore(d);$("skinName").value=n;toast("Skin loaded");
+  activeCloudId="";pushHistory();restore(d);$("skinName").value=n;toast("Browser backup loaded");
 }
 function importCode(raw){
   const m=String(raw||"").trim().match(/^FGY2:([a-z]+):(\d+):(\d+):(\d+):([0-9A-Fa-f]{6}(?:-[0-9A-Fa-f]{6}){9})$/);
   if(!m){toast("Invalid FGY2 code");return;}
   const sp=SPECIES.find(s=>s.slug===m[1]);if(!sp){toast("Unknown species");return;}
-  pushHistory();selected=sp;patternIndex=Math.min(Number(m[2]),sp.patterns-1);
+  activeCloudId="";pushHistory();selected=sp;patternIndex=Math.min(Number(m[2]),sp.patterns-1);
   skinVariation=Math.min(2,Number(m[3]));themeIndex=0;
   const p=m[5].split("-");SLOTS.forEach((s,i)=>colors[s.key]="#"+p[i].toUpperCase());
   renderAll();toast("Skin imported");
@@ -266,16 +268,77 @@ async function api(path,opt={}){
     clearTimeout(timer);
   }
 }
+const CLOUD_CACHE_KEY="foggy_cloud_library_cache_v1",CLOUD_QUEUE_KEY="foggy_cloud_sync_queue_v1";
+function cloudUuid(){return crypto?.randomUUID?crypto.randomUUID():"xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,c=>{const r=Math.random()*16|0,v=c==="x"?r:(r&3|8);return v.toString(16)});}
+function cloudSnapshot(id=activeCloudId||cloudUuid(),name=$("skinName").value.trim()||`${selected.name} Skin`){return{id,name,species:selected.slug,patternIndex,skinVariation,themeIndex:0,previewSex,colors:{...colors}};}
+function cloudCacheRead(){try{const d=JSON.parse(localStorage.getItem(CLOUD_CACHE_KEY)||"null");return d&&me&&d.steam===me.steam?d:null}catch{return null}}
+function cloudCacheWrite(data){if(!me)return;localStorage.setItem(CLOUD_CACHE_KEY,JSON.stringify({steam:me.steam,skins:data.skins||[],lastApplied:data.lastApplied||null,cachedAt:Date.now()}));}
+function cloudQueueRead(){try{return JSON.parse(localStorage.getItem(CLOUD_QUEUE_KEY)||"[]")}catch{return[]}}
+function cloudQueueWrite(q){localStorage.setItem(CLOUD_QUEUE_KEY,JSON.stringify(q.slice(-30)));}
+function queueCloudSave(skin){const q=cloudQueueRead().filter(x=>x.id!==skin.id);q.push({id:skin.id,skin,queuedAt:Date.now()});cloudQueueWrite(q);}
+function removeQueuedCloudSave(id){cloudQueueWrite(cloudQueueRead().filter(x=>x.id!==id));}
+function setCloudStatus(text,kind=""){const e=$("cloudLibraryStatus");if(!e)return;e.textContent=text;e.className="section-sub "+kind;}
+function renderCloudLibrary(){
+  const sel=$("cloudSkins");if(!sel)return;const keep=sel.value;sel.innerHTML="";
+  const skins=[...(cloudLibrary.skins||[])].sort((a,b)=>(Number(Boolean(b.favorite))-Number(Boolean(a.favorite)))||(Number(b.updatedAt||0)-Number(a.updatedAt||0)));
+  if(!skins.length){sel.append(new Option(me?"No Steam-linked skins yet":"Sign in with Steam",""));}
+  else{sel.append(new Option("Choose Steam skin…",""));skins.forEach(s=>sel.append(new Option(`${s.favorite?"★ ":""}${s.name} · ${s.species}`,s.id)));}
+  if(skins.some(s=>s.id===keep))sel.value=keep;
+  const chosen=skins.find(s=>s.id===sel.value);$("favoriteCloud").textContent=chosen?.favorite?"★ Favourited":"☆ Favourite";
+  $("loadLastApplied").disabled=!cloudLibrary.lastApplied?.skin;
+}
+function loadCachedCloudLibrary(){const c=cloudCacheRead();if(!c)return false;cloudLibrary={skins:Array.isArray(c.skins)?c.skins:[],lastApplied:c.lastApplied||null};renderCloudLibrary();setCloudStatus(`Cached Steam library · ${cloudLibrary.skins.length} skin${cloudLibrary.skins.length===1?"":"s"}`,"warn");return true;}
+async function pollLibrary(id,timeout=35){
+  for(let i=0;i<timeout;i++){
+    await new Promise(r=>setTimeout(r,850));let d;
+    try{d=await api("/api/library/status/"+encodeURIComponent(id));}catch(e){if(i===timeout-1)throw e;continue;}
+    if(d.status==="completed")return d;
+    if(d.status==="failed")throw Error(d.message||"Cloud library operation failed");
+  }
+  throw Error("Cloud library did not confirm in time");
+}
+async function cloudOp(action,payload={}){const d=await api("/api/library/op",{method:"POST",body:JSON.stringify({action,...payload})});return pollLibrary(d.id);}
+async function refreshCloudLibrary(silent=false){
+  if(!me){cloudLibrary={skins:[],lastApplied:null};renderCloudLibrary();setCloudStatus("Sign in with Steam to sync saved skins","");return false;}
+  if(!bridgeOnline){if(!loadCachedCloudLibrary())setCloudStatus("Bridge offline · browser backups still work","bad");return false;}
+  if(cloudBusy)return false;cloudBusy=true;if(!silent)setCloudStatus("Loading Steam library…","warn");
+  try{const r=await cloudOp("list");cloudLibrary={skins:Array.isArray(r.data?.skins)?r.data.skins:[],lastApplied:r.data?.lastApplied||null};cloudCacheWrite(cloudLibrary);renderCloudLibrary();setCloudStatus(`Steam-linked · ${cloudLibrary.skins.length}/50 skins`,"good");return true;}
+  catch(e){if(!loadCachedCloudLibrary())setCloudStatus(bridgeOnline?e.message:"Bridge offline · browser backups still work","bad");return false;}
+  finally{cloudBusy=false;}
+}
+async function saveCurrentCloud(showToast=true){
+  if(!me){if(showToast)toast("Sign in with Steam first");return false;}
+  const skin=cloudSnapshot();activeCloudId=skin.id;queueCloudSave(skin);
+  if(!bridgeOnline){if(showToast)toast("Saved locally · cloud sync queued");setCloudStatus("Cloud save queued · bridge offline","warn");return false;}
+  try{const r=await cloudOp("save",{skin});removeQueuedCloudSave(skin.id);if(r.data?.name)$("skinName").value=r.data.name;if(showToast)toast("Saved to Steam library");await refreshCloudLibrary(true);return true;}
+  catch(e){if(showToast)toast(bridgeOnline?"Cloud save queued for retry":"Saved locally · cloud sync queued");setCloudStatus("Cloud save queued · browser backup is safe","warn");return false;}
+}
+async function flushCloudQueue(){
+  if(!me||!bridgeOnline||cloudBusy)return;const q=cloudQueueRead();if(!q.length)return;
+  for(const item of q.slice(0,10)){try{await cloudOp("save",{skin:item.skin});removeQueuedCloudSave(item.id);}catch{return;}}
+  await refreshCloudLibrary(true);
+}
+function selectedCloud(){return (cloudLibrary.skins||[]).find(s=>s.id===$("cloudSkins").value)||null;}
+function loadCloudSkin(skin,id=""){if(!skin)return;activeCloudId=id||"";pushHistory();restore(skin);$("skinName").value=skin.name||`${selected.name} Skin`;toast(id?"Steam skin loaded":"Last applied skin loaded");}
+async function mutateCloud(action,payload,success){
+  if(!me){toast("Sign in with Steam first");return false;}if(!bridgeOnline){toast("FOGGY server bridge is offline");return false;}
+  try{await cloudOp(action,payload);if(success)toast(success);await refreshCloudLibrary(true);return true;}catch(e){toast(e.message);return false;}
+}
+async function renameCloudSkin(){const s=selectedCloud();if(!s)return toast("Choose a Steam skin first");const name=prompt("Rename Steam skin",s.name);if(!name?.trim())return;await mutateCloud("rename",{id:s.id,name:name.trim()},"Cloud skin renamed");}
+async function duplicateCloudSkin(){const s=selectedCloud();if(!s)return toast("Choose a Steam skin first");const newId=cloudUuid(),name=(s.name+" Copy").slice(0,48);if(await mutateCloud("duplicate",{id:s.id,newId,name},"Cloud skin duplicated")){activeCloudId=newId;$("cloudSkins").value=newId;}}
+async function deleteCloudSkin(){const s=selectedCloud();if(!s)return toast("Choose a Steam skin first");if(!confirm(`Delete “${s.name}” from your Steam library?`))return;if(await mutateCloud("delete",{id:s.id},"Cloud skin deleted")&&activeCloudId===s.id)activeCloudId="";}
+async function favoriteCloudSkin(){const s=selectedCloud();if(!s)return toast("Choose a Steam skin first");await mutateCloud("favorite",{id:s.id,favorite:!s.favorite},s.favorite?"Removed from favourites":"Added to favourites");}
+
 function readAuthHash(){
   const h=new URLSearchParams(location.hash.replace(/^#/,"")),t=h.get("session");
   if(t){session=t;localStorage.setItem("foggy_skin_session",t);history.replaceState(null,"",location.pathname+location.search);}
 }
 async function refreshMe(){
-  if(!API_READY){$("apiStatus").textContent="API not configured";$("apiStatus").className="status warn";return;}
+  if(!API_READY){$("apiStatus").textContent="API not configured";$("apiStatus").className="status warn";setCloudStatus("Cloud library unavailable","bad");return;}
   try{await api("/health");$("apiStatus").textContent="Skin API online";$("apiStatus").className="status good";}
   catch{$("apiStatus").textContent="Skin API unreachable";$("apiStatus").className="status bad";}
-  if(!session){me=null;$("accountTitle").textContent="Steam not linked";$("accountDetail").textContent="Sign in once. No client files or commands required.";$("steamButton").textContent="Sign in with Steam";return;}
-  try{me=await api("/api/me");$("accountTitle").textContent="Steam linked";$("accountDetail").textContent="SteamID64 "+me.steam;$("steamButton").textContent="Sign out";}
+  if(!session){me=null;cloudLibrary={skins:[],lastApplied:null};activeCloudId="";renderCloudLibrary();setCloudStatus("Sign in with Steam to sync saved skins","");$("accountTitle").textContent="Steam not linked";$("accountDetail").textContent="Sign in once. No client files or commands required.";$("steamButton").textContent="Sign in with Steam";return;}
+  try{me=await api("/api/me");$("accountTitle").textContent="Steam linked";$("accountDetail").textContent="SteamID64 "+me.steam;$("steamButton").textContent="Sign out";loadCachedCloudLibrary();refreshCloudLibrary(true);}
   catch{session="";localStorage.removeItem("foggy_skin_session");me=null;refreshMe();}
 }
 let statusRefreshBusy=false;
@@ -284,10 +347,12 @@ async function refreshServerStatus(){
   statusRefreshBusy=true;
   try{
     const d=await api("/api/public/status");
-    $("serverStatus").textContent=d.online?"FOGGY server bridge online":"FOGGY server bridge offline";
-    $("serverStatus").className=d.online?"status good":"status bad";
+    const was=bridgeOnline;bridgeOnline=Boolean(d.online);
+    $("serverStatus").textContent=bridgeOnline?"FOGGY server bridge online":"FOGGY server bridge offline";
+    $("serverStatus").className=bridgeOnline?"status good":"status bad";
+    if(bridgeOnline&&!was&&me){flushCloudQueue().then(()=>refreshCloudLibrary(true));}
   }catch{
-    $("serverStatus").textContent="Bridge status unavailable";
+    bridgeOnline=false;$("serverStatus").textContent="Bridge status unavailable";
     $("serverStatus").className="status warn";
   }finally{
     statusRefreshBusy=false;
@@ -298,7 +363,7 @@ async function pollApply(id){
   for(let i=0;i<24;i++){
     await new Promise(r=>setTimeout(r,1000));
     try{const d=await api("/api/skins/status/"+encodeURIComponent(id));
-      if(d.status==="applied"){o.textContent=d.message||"Skin applied.";o.className="result show ok";return;}
+      if(d.status==="applied"){o.textContent=d.message||"Skin applied.";o.className="result show ok";setTimeout(()=>refreshCloudLibrary(true),1500);return;}
       if(d.status==="failed"){o.textContent=d.message||"Skin apply failed.";o.className="result show err";return;}
     }catch{}
   }
@@ -319,7 +384,7 @@ async function applySkin(){
 }
 
 
-buildSpecies();buildColors();buildPresets();refreshSaved();readAuthHash();renderAll();refreshMe();refreshServerStatus();
+buildSpecies();buildColors();buildPresets();refreshSaved();renderCloudLibrary();readAuthHash();renderAll();refreshMe();refreshServerStatus();
 setInterval(refreshServerStatus,10000);
 
 $("species").onchange=e=>{pushHistory();selected=SPECIES.find(s=>s.slug===e.target.value)||SPECIES[0];patternIndex=0;renderAll();};
@@ -329,7 +394,12 @@ document.querySelectorAll("#sexButtons button").forEach(b=>b.onclick=()=>{previe
 $("naturalize").onclick=naturalize;$("randomize").onclick=randomize;
 $("resetSkin").onclick=()=>{pushHistory();colors={...DEFAULTS};patternIndex=0;skinVariation=1;themeIndex=0;renderAll();toast("Skin reset");};
 $("saveSkin").onclick=saveSkin;$("loadSaved").onclick=loadSaved;
-$("deleteSaved").onclick=()=>{const n=$("savedSkins").value;if(!n)return;const d=savedDb();delete d[n];localStorage.setItem("foggy_skin_presets_v60",JSON.stringify(d));refreshSaved();toast("Skin deleted");};
+$("deleteSaved").onclick=()=>{const n=$("savedSkins").value;if(!n)return;const d=savedDb();delete d[n];localStorage.setItem("foggy_skin_presets_v60",JSON.stringify(d));refreshSaved();toast("Browser backup deleted");};
+$("refreshCloud").onclick=()=>refreshCloudLibrary(false);$("saveCloud").onclick=()=>saveCurrentCloud(true);
+$("loadCloud").onclick=()=>{const s=selectedCloud();if(s)loadCloudSkin(s,s.id);else toast("Choose a Steam skin first");};
+$("favoriteCloud").onclick=favoriteCloudSkin;$("renameCloud").onclick=renameCloudSkin;$("duplicateCloud").onclick=duplicateCloudSkin;$("deleteCloud").onclick=deleteCloudSkin;
+$("loadLastApplied").onclick=()=>{const s=cloudLibrary.lastApplied?.skin;if(s)loadCloudSkin(s,"");else toast("No last applied skin recorded yet");};
+$("cloudSkins").onchange=renderCloudLibrary;
 $("copyCode").onclick=async()=>{try{await navigator.clipboard.writeText(shareCode());toast("Share code copied");}catch{prompt("Copy this code",shareCode());}};
 $("importCode").onclick=()=>importCode($("shareCode").value);
 $("undo").onclick=()=>{if(!history.length)return;future.push(snapshot());restore(history.pop());};

@@ -1,3 +1,13 @@
+## Web v0.9.0 / API v0.7.0 / Bridge v0.7.0 — Steam Cloud Skin Library
+
+- Adds a SteamID-scoped server-backed saved skin library with up to 50 skins per account.
+- Adds save/update, load, rename, duplicate, delete and favourite controls.
+- Records the last successfully applied website skin server-side.
+- Keeps browser-local saves as a fallback and queues failed cloud saves for later retry.
+- Stores authoritative library data atomically in `SkinWebLibrary.json` on the dedicated server rather than Railway ephemeral storage.
+- Extends the existing authenticated bridge protocol without changing UE4SS `main.lua` or the working skin-apply path.
+- Preserves v0.8.3 preview caching/progress and the researched Evrima renderer.
+
 ## Web v0.8.3 / API v0.6.2 — Persistent Preview Cache + Progress
 
 - Adds live byte/percentage progress for first-time Evrima model and texture downloads.

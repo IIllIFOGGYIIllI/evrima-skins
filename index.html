@@ -14,6 +14,17 @@
   }
 }
 </script>
+
+<style>
+/* v0.9.0 Steam-linked cloud library */
+.cloud-library{border-color:#5b5736;background:linear-gradient(180deg,rgba(25,27,18,.74),rgba(10,14,10,.5))}
+.cloud-library .section-head{gap:10px}
+.cloud-library .quick-actions{display:flex;gap:6px;flex-wrap:wrap}
+.cloud-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:7px}
+.cloud-actions button{min-width:0}
+#cloudLibraryStatus.good{color:#a9c985}#cloudLibraryStatus.warn{color:#d5b866}#cloudLibraryStatus.bad{color:#d58072}
+@media(max-width:720px){.cloud-actions{grid-template-columns:repeat(2,minmax(0,1fr))}.cloud-library .section-head{align-items:flex-start;flex-direction:column}}
+</style>
 </head>
 <body>
 <div class="shell">
@@ -26,7 +37,7 @@
   <div class="statuses">
     <span id="apiStatus" class="status warn">API checking…</span>
     <span id="serverStatus" class="status warn">Bridge checking…</span>
-    <span class="status">Web v0.8.3</span>
+    <span class="status">Web v0.9.0</span>
   </div>
 </header>
 
@@ -176,15 +187,39 @@
     <div id="presets" class="presets"></div>
     <div id="colors" class="color-list"></div>
 
-    <div class="saved-area">
+    <div class="saved-area cloud-library">
       <div class="section-head compact">
         <div>
-          <div class="kicker">SAVED SKINS</div>
-          <span class="section-sub">Saved only in this browser</span>
+          <div class="kicker">STEAM CLOUD LIBRARY</div>
+          <span id="cloudLibraryStatus" class="section-sub">Sign in with Steam to sync saved skins</span>
+        </div>
+        <div class="quick-actions">
+          <button id="refreshCloud">Refresh</button>
+          <button id="saveCloud">Save current</button>
         </div>
       </div>
       <div class="saved-row">
-        <select id="savedSkins"><option value="">No saved skins yet</option></select>
+        <select id="cloudSkins"><option value="">Steam library not loaded</option></select>
+        <button id="loadCloud">Load</button>
+        <button id="favoriteCloud">☆ Favourite</button>
+      </div>
+      <div class="cloud-actions">
+        <button id="duplicateCloud">Duplicate</button>
+        <button id="renameCloud">Rename</button>
+        <button id="deleteCloud">Delete</button>
+        <button id="loadLastApplied">Last applied</button>
+      </div>
+    </div>
+
+    <div class="saved-area">
+      <div class="section-head compact">
+        <div>
+          <div class="kicker">BROWSER BACKUPS</div>
+          <span class="section-sub">Local fallback retained on this browser</span>
+        </div>
+      </div>
+      <div class="saved-row">
+        <select id="savedSkins"><option value="">No browser backups yet</option></select>
         <button id="loadSaved">Load</button>
         <button id="deleteSaved">Delete</button>
       </div>
@@ -210,6 +245,6 @@
 <div id="toast" class="toast"></div>
 <script src="./config.js"></script>
 <script type="module" src="./viewer3d.js?v=083"></script>
-<script src="./app.js?v=083"></script>
+<script src="./app.js?v=090"></script>
 </body>
 </html>
