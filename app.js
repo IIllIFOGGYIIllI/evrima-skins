@@ -370,7 +370,7 @@ async function flushCloudQueue(){
 function selectedCloud(){return (cloudLibrary.skins||[]).find(s=>s.id===$("cloudSkins").value)||null;}
 function loadCloudSkin(skin,id=""){if(!skin)return;activeCloudId=id||"";pushHistory();restore(skin);$("skinName").value=skin.name||`${selected.name} Skin`;renderCloudMeta();toast(id?"Steam skin loaded":"Last applied skin loaded");}
 async function mutateCloud(action,payload,success){
-  if(!me){toast("Sign in with Steam first");return false;}if(!bridgeOnline){toast("FOGGY server bridge is offline");return false;}
+  if(!me){toast("Sign in with Steam first");return false;}if(!bridgeOnline){toast("Primeval Refuge server bridge is offline");return false;}
   try{await cloudOp(action,payload);if(success)toast(success);await refreshCloudLibrary(true);return true;}catch(e){toast(e.message);return false;}
 }
 async function renameCloudSkin(){const s=selectedCloud();if(!s)return toast("Choose a Steam skin first");const name=prompt("Rename Steam skin",s.name);if(!name?.trim())return;await mutateCloud("rename",{id:s.id,name:name.trim()},"Cloud skin renamed");}
@@ -396,13 +396,13 @@ function downloadJson(filename,data){
 function safeFileName(v){return String(v||"skin").replace(/[^a-z0-9._-]+/gi,"_").replace(/^_+|_+$/g,"").slice(0,60)||"skin";}
 function exportSelectedCloud(){
   const s=selectedCloud();if(!s)return toast("Choose a Steam skin first");
-  downloadJson(`FOGGY_${safeFileName(s.name)}.json`,{format:"FOGGY_EVRIMA_SKIN",version:1,exportedAt:Date.now(),skin:skinExportPayload(s)});
+  downloadJson(`Primeval_Refuge_${safeFileName(s.name)}.json`,{format:"FOGGY_EVRIMA_SKIN",version:1,exportedAt:Date.now(),skin:skinExportPayload(s)});
   toast("Skin exported");
 }
 function exportCloudLibrary(){
   if(!me)return toast("Sign in with Steam first");
   const skins=(cloudLibrary.skins||[]).map(skinExportPayload);
-  downloadJson("FOGGY_Evrima_Skin_Library.json",{format:"FOGGY_EVRIMA_SKIN_LIBRARY",version:1,exportedAt:Date.now(),skins});
+  downloadJson("Primeval_Refuge_Evrima_Skin_Library.json",{format:"FOGGY_EVRIMA_SKIN_LIBRARY",version:1,exportedAt:Date.now(),skins});
   toast(`${skins.length} skin${skins.length===1?"":"s"} exported`);
 }
 function normalizeImportedSkin(raw){
@@ -418,7 +418,7 @@ function normalizeImportedSkin(raw){
 }
 async function importCloudFile(file){
   if(!me)return toast("Sign in with Steam first");
-  if(!bridgeOnline)return toast("FOGGY server bridge is offline");
+  if(!bridgeOnline)return toast("Primeval Refuge server bridge is offline");
   if(!file)return;
   if(file.size>512*1024)return toast("Import file is too large");
   let parsed;try{parsed=JSON.parse(await file.text());}catch{return toast("Import file is not valid JSON");}
@@ -564,11 +564,11 @@ async function refreshCommunity(silent=false){
 }
 function openCommunityInStudio(item,applyNow=false){if(!item?.snapshot)return;activeCloudId="";pushHistory();restore(item.snapshot);$("skinName").value=item.title||`${communitySpeciesName(item.snapshot.species)} Community Skin`;setAppPage("studio",true);toast(applyNow?"Community skin loaded · sending Apply":"Community skin opened in Studio");if(applyNow)setTimeout(()=>applySkin(),120);}
 async function saveCommunityToLibrary(id){
-  if(!me){location.href=API+"/auth/steam";return;}if(!bridgeOnline)return toast("FOGGY server bridge is offline");
+  if(!me){location.href=API+"/auth/steam";return;}if(!bridgeOnline)return toast("Primeval Refuge server bridge is offline");
   try{const r=await communityOp("save",{id});if(r.data?.item)upsertCommunityLocal(r.data.item);await refreshCloudLibrary(true);renderCommunity();toast(r.data?.duplicate?"That design is already in My Library":"Community skin saved to My Library");}catch(e){toast(e.message);}
 }
 async function toggleCommunityFavorite(id,favorite){
-  if(!me){location.href=API+"/auth/steam";return;}if(!bridgeOnline)return toast("FOGGY server bridge is offline");
+  if(!me){location.href=API+"/auth/steam";return;}if(!bridgeOnline)return toast("Primeval Refuge server bridge is offline");
   try{const r=await communityOp("favorite",{id,favorite});favorite?communityFavorites.add(id):communityFavorites.delete(id);if(r.data?.item)upsertCommunityLocal(r.data.item);renderCommunity();toast(favorite?"Added to community favourites":"Removed from community favourites");}catch(e){toast(e.message);}
 }
 function upsertCommunityLocal(item){const i=communityPublic.findIndex(x=>x.id===item?.id);if(i>=0)communityPublic[i]={...communityPublic[i],...item};else if(item?.visibility==="public")communityPublic.push(item);}
@@ -598,8 +598,8 @@ function applyStageNote(d){
   if(!d)return"No Apply request yet.";
   const s=d.status;
   if(s==="sending")return"Sending the skin to Railway…";
-  if(s==="queued")return d.bridgeOnline===false?"Railway received it, but the FOGGY bridge is offline or restarting.":"Railway received the request. Waiting for the FOGGY bridge.";
-  if(s==="delivered")return"FOGGY bridge received the request and is handing it to the server-side skin worker.";
+  if(s==="queued")return d.bridgeOnline===false?"Railway received it, but the Primeval Refuge bridge is offline or restarting.":"Railway received the request. Waiting for the Primeval Refuge bridge.";
+  if(s==="delivered")return"Primeval Refuge bridge received the request and is handing it to the server-side skin worker.";
   if(s==="accepted")return d.bridgeOnline===false?"The request reached the server, but the bridge is now offline or restarting. Waiting for final UE4SS confirmation.":"UE4SS handoff confirmed. Waiting for your live dinosaur to be found and the skin operation to finish.";
   if(s==="applied")return d.message||"Skin applied successfully.";
   if(s==="failed")return d.message||"The server-side skin operation failed.";
@@ -675,7 +675,7 @@ async function refreshServerStatus(){
   try{
     const d=await api("/api/public/status");
     const was=bridgeOnline;bridgeOnline=Boolean(d.online);
-    $("serverStatus").textContent=bridgeOnline?"FOGGY server bridge online":"FOGGY server bridge offline";
+    $("serverStatus").textContent=bridgeOnline?"Primeval Refuge bridge online":"Primeval Refuge bridge offline";
     $("serverStatus").className=bridgeOnline?"status good":"status bad";
     if(bridgeOnline&&!was&&me){flushCloudQueue().then(()=>refreshCloudLibrary(true));refreshPublishedMine(true);}
   }catch{
@@ -717,7 +717,7 @@ async function applySkin(){
   if(applyBusy){toast("An Apply request is already in progress");return;}
   if(!API_READY){o.textContent="Railway backend is not connected.";o.className="result show err";return;}
   if(!me){location.href=API+"/auth/steam";return;}
-  if(!bridgeOnline){o.textContent="FOGGY server bridge is offline or the server is restarting.";o.className="result show err";return;}
+  if(!bridgeOnline){o.textContent="Primeval Refuge server bridge is offline or the server is restarting.";o.className="result show err";return;}
   setApplyBusy(true);
   const clientNonce=cloudUuid(),localId="sending-"+Date.now();activeApplyId=localId;
   renderApplyStatus({id:localId,status:"sending",species:selected.slug,patternIndex,createdAt:Date.now(),bridgeOnline});
@@ -733,7 +733,7 @@ async function applySkin(){
     activeApplyId=d.id;
     const first={...d,id:d.id,status:d.status||"queued",species:d.species||selected.slug,patternIndex:Number(d.patternIndex??patternIndex),createdAt:d.createdAt||Date.now(),bridgeOnline:true};
     renderApplyStatus(first);
-    o.textContent=d.deduplicated?"Recovered the existing Apply request. Waiting for the server…":"Railway received the skin request. Waiting for the FOGGY bridge…";
+    o.textContent=d.deduplicated?"Recovered the existing Apply request. Waiting for the server…":"Railway received the skin request. Waiting for the Primeval Refuge bridge…";
     pollApply(d.id);
   }catch(e){
     if(e.status===409&&e.data?.active?.id){

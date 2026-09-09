@@ -99,3 +99,13 @@ Install Bridge v0.8.1 before deploying API v0.8.1. The bridge automatically crea
 ## v0.10.1 / API v0.8.1 / Bridge v0.8.1
 
 Install Bridge v0.8.1 before API v0.8.1. No configuration, secret, UE4SS or server-manager changes are required. Existing `SkinWebCommunity.json` entries migrate in place with `saveCount=0`, `favoriteCount=0`, and `featured=false`; existing `SkinWebLibrary.json` users gain an empty `communityFavorites` list. No wipe is required.
+
+## Web v0.10.2 — Primeval Refuge branding
+
+Upload the v0.10.2 updated files to the repository while preserving the `assets/` folder. This release is static-site branding only: API v0.8.1, Bridge v0.8.1 and UE4SS v0.6.2 remain unchanged, and no Railway variable or local server file needs to be replaced.
+
+Required new assets:
+
+- `assets/Primeval_Refuge_Official_Banner.png`
+- `assets/Primeval_Refuge_Official_Logo.png`
+- `brand.css`

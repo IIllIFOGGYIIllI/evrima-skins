@@ -1,0 +1,162 @@
+/* Primeval Refuge official branding — Web v0.10.2 */
+:root{
+  --bg:#070b08;
+  --panel:#111711;
+  --panel2:#171d15;
+  --line:#3c3a2b;
+  --line2:#65583a;
+  --gold:#d5a84b;
+  --gold2:#f2ce67;
+  --cream:#e8dfcf;
+  --muted:#a7a896;
+  --good:#8acb8d;
+  --bad:#e57972;
+  --warn:#e4ba58;
+  --moss:#56623a;
+  --moss2:#2e3b27;
+  --stone:#c7baa4;
+  --shadow:0 28px 80px rgba(0,0,0,.55);
+}
+html,body{background:#070b08;color:var(--cream)}
+body{
+  background:
+    radial-gradient(circle at 80% -10%,rgba(211,164,65,.15),transparent 34rem),
+    radial-gradient(circle at 8% 55%,rgba(62,91,48,.17),transparent 34rem),
+    linear-gradient(180deg,#070b08 0,#09100b 48%,#050806 100%);
+}
+.shell{max-width:1580px}
+.brand-header{margin-bottom:12px}
+.brand-banner-frame{
+  position:relative;overflow:hidden;border:1px solid #5a4e31;
+  background:#071008;box-shadow:0 22px 65px rgba(0,0,0,.52);
+}
+.brand-banner-frame::after{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  box-shadow:inset 0 0 0 1px rgba(240,205,103,.08),inset 0 -75px 80px rgba(2,5,3,.32);
+}
+.brand-banner{display:block;width:100%;height:auto;aspect-ratio:2048/682;object-fit:cover}
+.brand-bar{
+  display:flex;align-items:center;justify-content:space-between;gap:18px;
+  margin-top:8px;padding:10px 12px;
+  border:1px solid #453f2c;
+  background:linear-gradient(180deg,rgba(22,27,18,.96),rgba(10,14,10,.98));
+  box-shadow:0 14px 34px rgba(0,0,0,.28);
+}
+.brand-identity{display:flex;align-items:center;gap:12px;min-width:0}
+.brand-logo{
+  width:74px;height:74px;object-fit:contain;flex:0 0 auto;
+  filter:drop-shadow(0 6px 12px rgba(0,0,0,.48));
+}
+.brand-copy{min-width:0}
+.brand-copy .eyebrow{color:#e0b85a}
+.brand-copy h1{font-size:clamp(22px,2.5vw,34px);line-height:1;margin:3px 0 0;letter-spacing:.045em}
+.brand-copy h1 span{color:var(--gold2)}
+.brand-copy p{margin:6px 0 0;color:#a9ad9d;font-size:11px}
+.brand-statuses{max-width:480px}
+
+/* Core surface treatment */
+.panel,.page-column,.publish-card,.community-card,.shared-community{
+  border-color:#403d2e!important;
+  background:linear-gradient(180deg,rgba(21,27,18,.98),rgba(9,14,10,.98))!important;
+  box-shadow:var(--shadow);
+}
+.editor-panel,.preview-panel{border-top-color:#675a36!important}
+.option-block,.color-card,.account-card,.advanced,.saved-area,.apply-live,.apply-history-item{
+  border-color:#393a2d!important;background:rgba(8,14,9,.76)!important;
+}
+.section-head{border-bottom-color:#3e3b2c!important}
+.kicker,.eyebrow,.option-title,.scene-title{color:var(--gold)!important}
+.section-sub,.community-description,.page-heading p,.cloud-meta-note{color:#9fa391!important}
+
+/* Navigation */
+.app-tabs{
+  border-color:#4a4330!important;
+  background:linear-gradient(180deg,rgba(20,25,17,.97),rgba(10,14,10,.98))!important;
+  box-shadow:0 14px 34px rgba(0,0,0,.25);
+}
+.app-tabs button{border-color:transparent!important;color:#b8b6a9!important;background:transparent!important}
+.app-tabs button:hover{color:#f1dfaa!important;background:rgba(106,85,39,.16)!important}
+.app-tabs button.active{
+  color:#191509!important;border-color:#e1bc58!important;
+  background:linear-gradient(180deg,#efd06d,#b99036)!important;
+  box-shadow:inset 0 0 0 1px rgba(255,238,173,.18),0 5px 18px rgba(0,0,0,.2);
+}
+.app-tab-note{color:#8b917f!important}
+
+/* Controls */
+button{
+  border-color:#474737!important;
+  background:linear-gradient(180deg,#252c22,#151b16)!important;
+  color:#ebe3d4!important;
+}
+button:hover{border-color:#9b8246!important;background:linear-gradient(180deg,#31392b,#1a211a)!important}
+button.primary{
+  color:#171309!important;border-color:#f0ce69!important;
+  background:linear-gradient(180deg,#f0d06c,#bb933a)!important;
+  text-shadow:0 1px rgba(255,255,255,.16);
+}
+button.active,.segmented button.active,.pattern-buttons button.active,.cloud-filter-actions button.active{
+  border-color:#d7b354!important;background:#4d4224!important;color:#ffe69a!important;
+}
+select,input[type=text],input[type=search],input:not([type]),textarea{
+  color:#eee5d6!important;background:#0a100c!important;border-color:#414337!important;
+}
+select:focus,input:focus,textarea:focus{border-color:#b59649!important;box-shadow:0 0 0 2px rgba(213,168,75,.13)!important}
+input[type=color]{border-color:#62583d!important}
+input[type=range]{accent-color:var(--gold)}
+
+/* Status / labels */
+.status,.chip-label,.community-tag{
+  background:#0b110c!important;border-color:#484433!important;color:#d3cbbd!important;
+}
+.status.good{color:#a7d9a2!important;border-color:#476b42!important}
+.status.warn{color:#e5bd63!important;border-color:#6c5934!important}
+.status.bad{color:#ef9a91!important;border-color:#74423e!important}
+.community-tag{color:#d7c58e!important}
+.community-featured-mark{color:#f4ce67!important}
+
+/* Cards / community */
+.community-card,.publish-card{position:relative;overflow:hidden}
+.community-card::before,.publish-card::before{
+  content:"";position:absolute;left:0;right:0;top:0;height:2px;
+  background:linear-gradient(90deg,transparent,#a98438,#f0ca62,#a98438,transparent);opacity:.72;
+}
+.community-palette{border-color:#463f2d!important;background:#090e0a!important}
+.community-stats,.published-details,.publish-source-meta{color:#9fa38f!important}
+.page-heading h2{color:#eee3cf}
+
+/* Viewer */
+.viewer-shell{border-color:#5a5033!important;box-shadow:inset 0 0 0 1px rgba(213,168,75,.06)}
+.viewer-shell.scene-studio{background:radial-gradient(circle at 55% 25%,rgba(207,167,74,.17),transparent 35%),linear-gradient(180deg,#1e2119,#090d0a)!important}
+.scene-controls{border-color:#635638!important;background:rgba(7,12,8,.9)!important}
+.reference-card{border-color:#6b5a36!important}
+.palette-chip{border-color:rgba(236,211,145,.25)!important}
+
+/* Footer */
+footer{color:#747a6e!important;border-top:1px solid #2d3229;padding-top:12px}
+
+/* Mobile brand treatment */
+@media(max-width:700px){
+  body{padding:8px 8px calc(82px + env(safe-area-inset-bottom))!important}
+  .brand-header{margin-bottom:8px}
+  .brand-banner-frame{border-radius:2px}
+  .brand-banner{aspect-ratio:2048/682}
+  .brand-bar{padding:8px;gap:9px;align-items:flex-start;flex-direction:column}
+  .brand-identity{gap:8px;width:100%}
+  .brand-logo{width:56px;height:56px}
+  .brand-copy h1{font-size:20px}
+  .brand-copy p{font-size:9px;line-height:1.35}
+  .brand-statuses{max-width:none;width:100%;justify-content:flex-start}
+  .app-tabs{
+    border-color:#55492f!important;
+    background:rgba(8,13,9,.97)!important;
+    box-shadow:0 -10px 30px rgba(0,0,0,.55)!important;
+  }
+  .app-tabs button.active{background:linear-gradient(180deg,#dec05f,#9f7d32)!important}
+}
+@media(max-width:430px){
+  .brand-logo{width:48px;height:48px}
+  .brand-copy h1{font-size:17px;letter-spacing:.025em}
+  .brand-copy p{font-size:8px}
+  .status{font-size:8px!important;padding:5px 7px!important}
+}

@@ -1,6 +1,6 @@
-# FOGGY Evrima Skin Studio
+# Primeval Refuge — Evrima Skin Studio
 
-Browser skin creator for the **FOGGY Evrima PvE** The Isle: Evrima server.
+Browser skin creator for **Primeval Refuge**, an Evrima PvE community.
 
 **Live site:** https://iillifoggyiilli.github.io/evrima-skins/
 
@@ -8,12 +8,19 @@ Browser skin creator for the **FOGGY Evrima PvE** The Isle: Evrima server.
 
 | Component | Version | State |
 | --- | --- | --- |
-| Website / preview | **v0.8.2** | Researched renderer + stable sequential asset loading |
-| Railway Skin API | **v0.6.1** | Apply API + streamed/cache-backed asset service |
-| Windows bridge | **v0.6.0** | Production safe handoff |
-| UE4SS CustomSkins | **v0.6.1** | Persistence confirmed |
+| Website | **v0.10.2** | Primeval Refuge branding + Studio / Library / Community / Publish |
+| Preview pipeline | **v0.8.3** | Researched renderer + persistent browser cache |
+| Railway Skin API | **v0.8.1** | Apply + community discovery/publishing API |
+| Windows bridge | **v0.8.1** | Cloud library + community catalogue persistence |
+| UE4SS CustomSkins | **v0.6.2** | Multiplayer-hardened live Apply + persistence |
 
 The server-side skin restore has been confirmed after both reconnect and a full dedicated-server restart.
+
+## Primeval Refuge branding — Web v0.10.2
+
+The website now uses the official **Primeval Refuge** banner and transparent logo throughout the header and browser metadata. The UI palette has been rethemed around the artwork's dark jungle, weathered stone, moss and warm amber/gold identity while preserving the existing mobile layouts and skin workflow.
+
+The public-facing brand is now **Primeval Refuge · Evrima PvE Community**. Legacy internal identifiers such as `FOGGY_SKIN_CONFIG`, `FOGGY_*` JSON format markers, bridge filenames and event namespaces remain unchanged for compatibility with existing installs, saved libraries and server automation.
 
 ## What the website does
 

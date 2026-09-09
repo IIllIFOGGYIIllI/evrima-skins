@@ -1,3 +1,13 @@
+## Web v0.10.2 — Primeval Refuge Branding
+
+- Promotes **Primeval Refuge** as the public website/community identity.
+- Adds the official Primeval Refuge banner and transparent logo as first-party website assets.
+- Rebuilds the site header around the official artwork and adds logo-based favicon / mobile home-screen metadata.
+- Rethemes panels, navigation, controls, statuses, Community cards and mobile bottom navigation to the artwork's jungle / moss / stone / amber-gold palette.
+- Updates user-facing bridge/status text and exported file names to Primeval Refuge branding.
+- Keeps legacy `FOGGY_*` technical identifiers and JSON format markers unchanged for backward compatibility.
+- No API, bridge, UE4SS, Railway variable, database or server-config change is required.
+
 ## Web v0.10.1 / API v0.8.1 / Bridge v0.8.1 — Community Discovery + Mobile UX
 
 - Adds a dedicated Community page alongside Studio, My Library and Publish.
