@@ -32,6 +32,12 @@ function cleanHex(v){v=String(v||"").trim().toUpperCase();return /^#[0-9A-F]{6}$
 const SPECIES_PATTERNS={tyrannosaurus:3,allosaurus:3,austroraptor:3,carnotaurus:4,ceratosaurus:3,deinosuchus:3,dilophosaurus:3,herrerasaurus:3,omniraptor:5,pteranodon:3,troodon:3,triceratops:3,stegosaurus:3,diabloceratops:3,kentrosaurus:3,tenontosaurus:3,maiasaura:3,pachycephalosaurus:4,dryosaurus:3,hypsilophodon:3,gallimimus:3,beipiaosaurus:3};
 function cleanName(v){v=String(v||"").replace(/[\r\n\t]/g," ").replace(/\s+/g," ").trim();return v?v.slice(0,48):null}
 function cleanUuid(v){v=String(v||"").toLowerCase();return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(v)?v:null}
+function cleanTags(raw){
+  const vals=Array.isArray(raw)?raw:String(raw||"").split(","),out=[],seen=new Set();
+  for(let v of vals){v=String(v||"").replace(/[\r\n\t]/g," ").replace(/\s+/g," ").trim().slice(0,20);if(!v)continue;const k=v.toLowerCase();if(seen.has(k))continue;seen.add(k);out.push(v);if(out.length>=8)break}
+  return out;
+}
+function cleanVisibility(v){v=String(v||"private").toLowerCase();return["private","unlisted","public"].includes(v)?v:"private"}
 function normalizeLibrarySkin(raw){
   raw=raw&&typeof raw==="object"?raw:{};
   const species=String(raw.species||"").toLowerCase(),count=SPECIES_PATTERNS[species];
@@ -39,7 +45,7 @@ function normalizeLibrarySkin(raw){
   const name=cleanName(raw.name);if(!name)return{error:"Skin name is required"};
   const id=cleanUuid(raw.id);if(!id)return{error:"Invalid cloud skin ID"};
   const colors={};for(const f of FIELDS){const h=cleanHex(raw.colors&&raw.colors[f]);if(!h)return{error:`Invalid ${f} colour`};colors[f]=h}
-  return{skin:{id,name,species,patternIndex:Math.max(0,Math.min(count-1,Math.floor(Number(raw.patternIndex)||0))),skinVariation:Math.max(0,Math.min(2,Math.floor(Number(raw.skinVariation)||0))),themeIndex:0,previewSex:raw.previewSex==="female"?"female":"male",colors}};
+  return{skin:{id,name,species,patternIndex:Math.max(0,Math.min(count-1,Math.floor(Number(raw.patternIndex)||0))),skinVariation:Math.max(0,Math.min(2,Math.floor(Number(raw.skinVariation)||0))),themeIndex:0,previewSex:raw.previewSex==="female"?"female":"male",colors,favorite:Boolean(raw.favorite),tags:cleanTags(raw.tags),visibility:cleanVisibility(raw.visibility)}};
 }
 const APPLY_PENDING_MAX_MS=120000;
 const APPLY_TERMINAL=new Set(["applied","failed","superseded"]);
@@ -240,7 +246,7 @@ const app=http.createServer(async(req,res)=>{
   cors(req,res);if(req.method==="OPTIONS"){res.writeHead(204);return res.end()}
   const url=new URL(req.url,PUBLIC_BASE_URL||`http://${req.headers.host||"localhost"}`);
   try{
-    if(req.method==="GET"&&url.pathname==="/health")return send(res,200,{ok:true,service:"FOGGY Evrima Skin API",version:"0.7.2"});
+    if(req.method==="GET"&&url.pathname==="/health")return send(res,200,{ok:true,service:"FOGGY Evrima Skin API",version:"0.7.3"});
     if(req.method==="GET"&&url.pathname==="/auth/steam"){if(!PUBLIC_BASE_URL||!SESSION_SECRET)return send(res,503,{error:"Steam auth is not configured"});res.writeHead(302,{Location:openidUrl(),"Cache-Control":"no-store"});return res.end()}
     if(req.method==="GET"&&url.pathname==="/auth/steam/callback"){const steam=await verifySteam(url);if(!steam){res.writeHead(302,{Location:FRONTEND_URL+"#auth=failed"});return res.end()}res.writeHead(302,{Location:FRONTEND_URL+"#session="+encodeURIComponent(signSession(steam)),"Cache-Control":"no-store"});return res.end()}
     if(req.method==="GET"&&url.pathname==="/api/me"){const u=user(req);if(!u)return send(res,401,{error:"Steam sign-in required"});return send(res,200,{steam:u.steam})}
@@ -294,6 +300,11 @@ const app=http.createServer(async(req,res)=>{
         payload.id=cleanUuid(b.id);payload.favorite=Boolean(b.favorite);if(!payload.id)return send(res,400,{error:"Invalid cloud skin ID"});
       }else if(action==="duplicate"){
         payload.id=cleanUuid(b.id);payload.newId=cleanUuid(b.newId);payload.name=cleanName(b.name);if(!payload.id||!payload.newId||!payload.name)return send(res,400,{error:"Invalid duplicate request"});
+      }else if(action==="metadata"){
+        payload.id=cleanUuid(b.id);payload.tags=cleanTags(b.tags);payload.visibility=cleanVisibility(b.visibility);if(!payload.id)return send(res,400,{error:"Invalid cloud skin ID"});
+      }else if(action==="import"){
+        if(!Array.isArray(b.skins)||!b.skins.length||b.skins.length>50)return send(res,400,{error:"Import must contain 1 to 50 skins"});
+        payload.skins=[];for(const raw of b.skins){const n=normalizeLibrarySkin(raw);if(n.error)return send(res,400,{error:n.error});payload.skins.push(n.skin)}
       }else return send(res,400,{error:"Unsupported library action"});
       const c=queueLibraryCommand(u.steam,action,payload,true);return send(res,202,{ok:true,id:c.id,status:c.status});
     }

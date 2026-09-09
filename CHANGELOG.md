@@ -1,3 +1,15 @@
+## Web v0.9.3 / API v0.7.3 / Bridge v0.7.2 — Advanced Library, Tags & Import/Export
+
+- Adds cloud-library search across skin name, species and user tags.
+- Adds species filter, favourites-only filter, and newest/name/species sorting.
+- Adds up to eight synced user tags per skin.
+- Adds stored Private / Unlisted / Public visibility metadata as Step 6B publishing groundwork; this release does not publish skins.
+- Adds validated single-skin and whole-library JSON export.
+- Adds validated bulk JSON import for up to 50 skins.
+- Import never overwrites an existing cloud ID and skips exact design duplicates.
+- Existing cloud entries migrate automatically to empty tags + Private visibility.
+- Preserves v0.9.2 multiplayer hardening, live Apply status, cloud persistence and the v0.8.3 preview pipeline.
+
 ## Web v0.9.2 / API v0.7.2 / Bridge v0.7.1 / UE4SS v0.6.2 — Multiplayer Hardening
 
 - Adds one in-flight Apply per Steam account while preserving concurrent Applies for different players.

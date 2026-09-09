@@ -51,6 +51,22 @@
 .apply-history-badge.wait{border-color:#756438;color:#d9c478}
 @media(max-width:720px){.apply-steps{grid-template-columns:1fr}.apply-history-item{grid-template-columns:1fr}}
 
+
+/* v0.9.3 advanced Steam library */
+.cloud-tools{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(130px,.7fr) minmax(120px,.6fr);gap:6px;margin:8px 0}
+.cloud-tools input,.cloud-tools select,.cloud-meta input,.cloud-meta select{min-width:0;width:100%}
+.cloud-filter-actions{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:7px}
+.cloud-filter-actions button.active{border-color:#867540;color:#e1cb7a;background:rgba(128,105,37,.2)}
+.cloud-meta{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(125px,.7fr) auto;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid #393b2b}
+.cloud-meta-note{grid-column:1/-1;font-size:8px;color:#858b80;line-height:1.4}
+.cloud-io{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:7px}
+.cloud-count{font-size:8px;color:#858d82;margin-top:6px}
+@media(max-width:720px){
+  .cloud-tools{grid-template-columns:1fr}
+  .cloud-meta{grid-template-columns:1fr}
+  .cloud-io{grid-template-columns:1fr}
+}
+
 </style>
 </head>
 <body>
@@ -64,7 +80,7 @@
   <div class="statuses">
     <span id="apiStatus" class="status warn">API checking…</span>
     <span id="serverStatus" class="status warn">Bridge checking…</span>
-    <span class="status">Web v0.9.2</span>
+    <span class="status">Web v0.9.3</span>
   </div>
 </header>
 
@@ -246,17 +262,47 @@
           <button id="saveCloud">Save current</button>
         </div>
       </div>
+      <div class="cloud-tools">
+        <input id="cloudSearch" type="search" placeholder="Search name, species or tags">
+        <select id="cloudSpeciesFilter"><option value="">All species</option></select>
+        <select id="cloudSort">
+          <option value="updated">Newest</option>
+          <option value="name">Name A–Z</option>
+          <option value="species">Species</option>
+        </select>
+      </div>
+      <div class="cloud-filter-actions">
+        <button id="cloudFavoritesOnly" type="button">☆ Favourites only</button>
+        <button id="clearCloudFilters" type="button">Clear filters</button>
+      </div>
       <div class="saved-row">
         <select id="cloudSkins"><option value="">Steam library not loaded</option></select>
         <button id="loadCloud">Load</button>
         <button id="favoriteCloud">☆ Favourite</button>
       </div>
+      <div id="cloudCount" class="cloud-count"></div>
       <div class="cloud-actions">
         <button id="duplicateCloud">Duplicate</button>
         <button id="renameCloud">Rename</button>
         <button id="deleteCloud">Delete</button>
         <button id="loadLastApplied">Last applied</button>
       </div>
+      <div class="cloud-meta">
+        <input id="cloudTags" maxlength="170" placeholder="Tags: realistic, jungle, dark">
+        <select id="cloudVisibility" title="Publishing is added in Step 6B">
+          <option value="private">Private</option>
+          <option value="unlisted">Unlisted</option>
+          <option value="public">Public</option>
+        </select>
+        <button id="saveCloudMeta" type="button">Save metadata</button>
+        <div class="cloud-meta-note">Tags sync with Steam. Visibility is stored now as publishing groundwork; Public/Unlisted does not publish anything until Step 6B.</div>
+      </div>
+      <div class="cloud-io">
+        <button id="exportCloud" type="button">Export selected</button>
+        <button id="exportCloudAll" type="button">Export library</button>
+        <button id="importCloud" type="button">Import JSON</button>
+      </div>
+      <input id="cloudImportFile" type="file" accept="application/json,.json" hidden>
     </div>
 
     <div class="saved-area">
@@ -293,6 +339,6 @@
 <div id="toast" class="toast"></div>
 <script src="./config.js"></script>
 <script type="module" src="./viewer3d.js?v=083"></script>
-<script src="./app.js?v=092"></script>
+<script src="./app.js?v=093"></script>
 </body>
 </html>

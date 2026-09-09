@@ -48,7 +48,7 @@ After the commit finishes deploying:
 
 1. Open the live skin creator.
 2. Hard-refresh with `Ctrl + Shift + R`.
-3. Confirm the header shows **Web v0.9.2**.
+3. Confirm the header shows **Web v0.9.3**.
 4. Test Tyrannosaurus first.
 5. Change Pattern 1 → 2 → 3 and confirm the source texture changes.
 6. Test several different species such as Deinosuchus, Omniraptor, Triceratops and Pteranodon.
@@ -84,6 +84,10 @@ No new variable is required for v0.9.0. The browser now persistently caches prev
 
 Replace `FOGGY_SkinWebBridge.ps1` in the dedicated-server root with Bridge v0.7.0. Do not replace `SkinWebBridge.config.json`; the existing API URL and bridge token remain valid. No new Railway variables, database or Railway volume are required. The bridge creates `SkinWebLibrary.json` automatically beside itself and writes it atomically.
 
-## v0.9.2 / API v0.7.2 / Bridge v0.7.1
+## v0.9.2 / API v0.7.3 / Bridge v0.7.2
 
-Install `FOGGY_SkinWebBridge.ps1` v0.7.1 and `main.lua` v0.6.2 on the server **before** deploying API v0.7.2. The new API requires the bridge to include the configured server ID on ACK/result/library-result writes. No new config variables or secrets are required. `SkinWebBridge.replay.json` is created automatically beside the bridge script.
+Install `FOGGY_SkinWebBridge.ps1` v0.7.1 and `main.lua` v0.6.2 on the server **before** deploying API v0.7.3. The new API requires the bridge to include the configured server ID on ACK/result/library-result writes. No new config variables or secrets are required. `SkinWebBridge.replay.json` is created automatically beside the bridge script.
+
+## v0.9.3 / API v0.7.3 / Bridge v0.7.2
+
+Install `FOGGY_SkinWebBridge.ps1` v0.7.2 before deploying API v0.7.3 so tag/visibility metadata and bulk imports persist in `SkinWebLibrary.json`. No config or secret changes are required. Existing library data is upgraded automatically and remains backward-safe; there is no wipe or manual migration.

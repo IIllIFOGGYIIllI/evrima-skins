@@ -1,4 +1,4 @@
-# FOGGY Evrima Skin API v0.7.2
+# FOGGY Evrima Skin API v0.7.3
 
 Railway backend for the FOGGY Evrima Skin Studio.
 
@@ -47,7 +47,7 @@ Authenticated users submit library operations through `POST /api/library/op` and
 
 `GET /api/skins/status/:id` now returns species, pattern, bridge-online state, and lifecycle timestamps. `GET /api/skins/recent` returns the signed-in user's eight most recent in-memory Apply requests. New Apply requests are rejected with HTTP 503 when the bridge heartbeat is offline instead of being silently queued into a dead path.
 
-### v0.7.2 hardening
+### v0.7.3 hardening
 
 - Apply requests are Steam-session owned; SteamID is never accepted from the browser payload.
 - One in-flight Apply per Steam account prevents stale same-player races while still allowing different players to Apply concurrently.
@@ -56,3 +56,7 @@ Authenticated users submit library operations through `POST /api/library/op` and
 - Apply and library rate limits include a per-Steam bucket in addition to IP limits.
 - Bridge state-changing endpoints require the configured `SERVER_ID`; final results require the exact request SteamID and are ignored after terminal completion.
 - `/api/server/commands` now returns `server` and uses `commandId` for library operations so a target skin ID cannot overwrite the library command ID.
+
+### Advanced library operations
+
+API v0.7.3 validates and forwards `metadata` operations (`id`, up to 8 tags, visibility) and `import` operations (1–50 validated skins) to Bridge v0.7.2. Visibility accepts only `private`, `unlisted`, or `public`; it is metadata only until the publishing API is introduced. Imported skins pass the same species/pattern/variation/colour validation as normal cloud saves.

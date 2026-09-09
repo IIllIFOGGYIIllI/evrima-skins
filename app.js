@@ -272,7 +272,21 @@ async function api(path,opt={}){
 }
 const CLOUD_CACHE_KEY="foggy_cloud_library_cache_v1",CLOUD_QUEUE_KEY="foggy_cloud_sync_queue_v1";
 function cloudUuid(){return crypto?.randomUUID?crypto.randomUUID():"xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,c=>{const r=Math.random()*16|0,v=c==="x"?r:(r&3|8);return v.toString(16)});}
-function cloudSnapshot(id=activeCloudId||cloudUuid(),name=$("skinName").value.trim()||`${selected.name} Skin`){return{id,name,species:selected.slug,patternIndex,skinVariation,themeIndex:0,previewSex,colors:{...colors}};}
+function cleanCloudTags(raw){
+  const values=Array.isArray(raw)?raw:String(raw||"").split(",");
+  const out=[],seen=new Set();
+  for(let v of values){
+    v=String(v||"").replace(/[\r\n\t]/g," ").replace(/\s+/g," ").trim().slice(0,20);
+    if(!v)continue;const key=v.toLowerCase();if(seen.has(key))continue;seen.add(key);out.push(v);if(out.length>=8)break;
+  }
+  return out;
+}
+function cleanVisibility(v){v=String(v||"private").toLowerCase();return["private","unlisted","public"].includes(v)?v:"private";}
+function cloudSnapshot(id=activeCloudId||cloudUuid(),name=$("skinName").value.trim()||`${selected.name} Skin`){
+  const existing=(cloudLibrary.skins||[]).find(s=>s.id===id);
+  return{id,name,species:selected.slug,patternIndex,skinVariation,themeIndex:0,previewSex,colors:{...colors},
+    tags:cleanCloudTags(existing?.tags||[]),visibility:cleanVisibility(existing?.visibility),favorite:Boolean(existing?.favorite)};
+}
 function cloudCacheRead(){try{const d=JSON.parse(localStorage.getItem(CLOUD_CACHE_KEY)||"null");return d&&me&&d.steam===me.steam?d:null}catch{return null}}
 function cloudCacheWrite(data){if(!me)return;localStorage.setItem(CLOUD_CACHE_KEY,JSON.stringify({steam:me.steam,skins:data.skins||[],lastApplied:data.lastApplied||null,cachedAt:Date.now()}));}
 function cloudQueueRead(){try{return JSON.parse(localStorage.getItem(CLOUD_QUEUE_KEY)||"[]")}catch{return[]}}
@@ -280,14 +294,44 @@ function cloudQueueWrite(q){localStorage.setItem(CLOUD_QUEUE_KEY,JSON.stringify(
 function queueCloudSave(skin){const q=cloudQueueRead().filter(x=>x.id!==skin.id);q.push({id:skin.id,skin,queuedAt:Date.now()});cloudQueueWrite(q);}
 function removeQueuedCloudSave(id){cloudQueueWrite(cloudQueueRead().filter(x=>x.id!==id));}
 function setCloudStatus(text,kind=""){const e=$("cloudLibraryStatus");if(!e)return;e.textContent=text;e.className="section-sub "+kind;}
+function cloudFilteredSkins(){
+  let skins=[...(cloudLibrary.skins||[])];
+  const q=String($("cloudSearch")?.value||"").trim().toLowerCase();
+  const species=String($("cloudSpeciesFilter")?.value||"");
+  const favOnly=$("cloudFavoritesOnly")?.classList.contains("active");
+  if(q)skins=skins.filter(s=>[s.name,s.species,...(Array.isArray(s.tags)?s.tags:[])].some(v=>String(v||"").toLowerCase().includes(q)));
+  if(species)skins=skins.filter(s=>s.species===species);
+  if(favOnly)skins=skins.filter(s=>Boolean(s.favorite));
+  const sort=$("cloudSort")?.value||"updated";
+  skins.sort((a,b)=>{
+    if(sort==="name")return String(a.name||"").localeCompare(String(b.name||""),undefined,{sensitivity:"base"});
+    if(sort==="species")return String(a.species||"").localeCompare(String(b.species||""))||String(a.name||"").localeCompare(String(b.name||""));
+    return (Number(Boolean(b.favorite))-Number(Boolean(a.favorite)))||(Number(b.updatedAt||0)-Number(a.updatedAt||0));
+  });
+  return skins;
+}
+function renderCloudMeta(){
+  const s=selectedCloud(),tags=$("cloudTags"),vis=$("cloudVisibility");
+  if(tags){tags.value=(s?.tags||[]).join(", ");tags.disabled=!s;}
+  if(vis){vis.value=cleanVisibility(s?.visibility);vis.disabled=!s;}
+  if($("saveCloudMeta"))$("saveCloudMeta").disabled=!s;
+}
 function renderCloudLibrary(){
   const sel=$("cloudSkins");if(!sel)return;const keep=sel.value;sel.innerHTML="";
-  const skins=[...(cloudLibrary.skins||[])].sort((a,b)=>(Number(Boolean(b.favorite))-Number(Boolean(a.favorite)))||(Number(b.updatedAt||0)-Number(a.updatedAt||0)));
-  if(!skins.length){sel.append(new Option(me?"No Steam-linked skins yet":"Sign in with Steam",""));}
-  else{sel.append(new Option("Choose Steam skin…",""));skins.forEach(s=>sel.append(new Option(`${s.favorite?"★ ":""}${s.name} · ${s.species}`,s.id)));}
+  const all=[...(cloudLibrary.skins||[])],skins=cloudFilteredSkins();
+  if(!skins.length){sel.append(new Option(me?(all.length?"No skins match these filters":"No Steam-linked skins yet"):"Sign in with Steam",""));}
+  else{sel.append(new Option("Choose Steam skin…",""));skins.forEach(s=>sel.append(new Option(`${s.favorite?"★ ":""}${s.name} · ${s.species}${s.tags?.length?" · "+s.tags.slice(0,2).join("/"):""}`,s.id)));}
   if(skins.some(s=>s.id===keep))sel.value=keep;
-  const chosen=skins.find(s=>s.id===sel.value);$("favoriteCloud").textContent=chosen?.favorite?"★ Favourited":"☆ Favourite";
+  const chosen=all.find(s=>s.id===sel.value);$("favoriteCloud").textContent=chosen?.favorite?"★ Favourited":"☆ Favourite";
   $("loadLastApplied").disabled=!cloudLibrary.lastApplied?.skin;
+  if($("cloudCount"))$("cloudCount").textContent=`Showing ${skins.length} of ${all.length} Steam skin${all.length===1?"":"s"}`;
+  renderCloudMeta();
+}
+function buildCloudFilters(){
+  const sel=$("cloudSpeciesFilter");if(!sel)return;
+  const keep=sel.value;sel.innerHTML="";sel.append(new Option("All species",""));
+  SPECIES.forEach(s=>sel.append(new Option(s.name,s.slug)));
+  if([...sel.options].some(o=>o.value===keep))sel.value=keep;
 }
 function loadCachedCloudLibrary(){const c=cloudCacheRead();if(!c)return false;cloudLibrary={skins:Array.isArray(c.skins)?c.skins:[],lastApplied:c.lastApplied||null};renderCloudLibrary();setCloudStatus(`Cached Steam library · ${cloudLibrary.skins.length} skin${cloudLibrary.skins.length===1?"":"s"}`,"warn");return true;}
 async function pollLibrary(id,timeout=35){
@@ -321,7 +365,7 @@ async function flushCloudQueue(){
   await refreshCloudLibrary(true);
 }
 function selectedCloud(){return (cloudLibrary.skins||[]).find(s=>s.id===$("cloudSkins").value)||null;}
-function loadCloudSkin(skin,id=""){if(!skin)return;activeCloudId=id||"";pushHistory();restore(skin);$("skinName").value=skin.name||`${selected.name} Skin`;toast(id?"Steam skin loaded":"Last applied skin loaded");}
+function loadCloudSkin(skin,id=""){if(!skin)return;activeCloudId=id||"";pushHistory();restore(skin);$("skinName").value=skin.name||`${selected.name} Skin`;renderCloudMeta();toast(id?"Steam skin loaded":"Last applied skin loaded");}
 async function mutateCloud(action,payload,success){
   if(!me){toast("Sign in with Steam first");return false;}if(!bridgeOnline){toast("FOGGY server bridge is offline");return false;}
   try{await cloudOp(action,payload);if(success)toast(success);await refreshCloudLibrary(true);return true;}catch(e){toast(e.message);return false;}
@@ -330,6 +374,73 @@ async function renameCloudSkin(){const s=selectedCloud();if(!s)return toast("Cho
 async function duplicateCloudSkin(){const s=selectedCloud();if(!s)return toast("Choose a Steam skin first");const newId=cloudUuid(),name=(s.name+" Copy").slice(0,48);if(await mutateCloud("duplicate",{id:s.id,newId,name},"Cloud skin duplicated")){activeCloudId=newId;$("cloudSkins").value=newId;}}
 async function deleteCloudSkin(){const s=selectedCloud();if(!s)return toast("Choose a Steam skin first");if(!confirm(`Delete “${s.name}” from your Steam library?`))return;if(await mutateCloud("delete",{id:s.id},"Cloud skin deleted")&&activeCloudId===s.id)activeCloudId="";}
 async function favoriteCloudSkin(){const s=selectedCloud();if(!s)return toast("Choose a Steam skin first");await mutateCloud("favorite",{id:s.id,favorite:!s.favorite},s.favorite?"Removed from favourites":"Added to favourites");}
+
+
+
+function skinExportPayload(s){
+  return{
+    id:s.id||cloudUuid(),name:String(s.name||"Saved Skin"),species:s.species,patternIndex:Number(s.patternIndex)||0,
+    skinVariation:Number(s.skinVariation)||0,themeIndex:0,previewSex:s.previewSex==="female"?"female":"male",
+    colors:{...s.colors},favorite:Boolean(s.favorite),tags:cleanCloudTags(s.tags||[]),visibility:cleanVisibility(s.visibility),
+    createdAt:Number(s.createdAt||0),updatedAt:Number(s.updatedAt||0)
+  };
+}
+function downloadJson(filename,data){
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=filename;a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1500);
+}
+function safeFileName(v){return String(v||"skin").replace(/[^a-z0-9._-]+/gi,"_").replace(/^_+|_+$/g,"").slice(0,60)||"skin";}
+function exportSelectedCloud(){
+  const s=selectedCloud();if(!s)return toast("Choose a Steam skin first");
+  downloadJson(`FOGGY_${safeFileName(s.name)}.json`,{format:"FOGGY_EVRIMA_SKIN",version:1,exportedAt:Date.now(),skin:skinExportPayload(s)});
+  toast("Skin exported");
+}
+function exportCloudLibrary(){
+  if(!me)return toast("Sign in with Steam first");
+  const skins=(cloudLibrary.skins||[]).map(skinExportPayload);
+  downloadJson("FOGGY_Evrima_Skin_Library.json",{format:"FOGGY_EVRIMA_SKIN_LIBRARY",version:1,exportedAt:Date.now(),skins});
+  toast(`${skins.length} skin${skins.length===1?"":"s"} exported`);
+}
+function normalizeImportedSkin(raw){
+  raw=raw&&typeof raw==="object"?raw:null;if(!raw)throw Error("Invalid skin entry");
+  const species=String(raw.species||"").toLowerCase(),sp=SPECIES.find(s=>s.slug===species);if(!sp)throw Error(`Unknown species: ${species||"missing"}`);
+  const name=String(raw.name||`${sp.name} Skin`).replace(/[\r\n\t]/g," ").replace(/\s+/g," ").trim().slice(0,48);if(!name)throw Error("Imported skin name is empty");
+  const p=Number(raw.patternIndex),v=Number(raw.skinVariation);
+  if(!Number.isInteger(p)||p<0||p>=sp.patterns)throw Error(`${name}: invalid pattern`);
+  if(!Number.isInteger(v)||v<0||v>2)throw Error(`${name}: invalid variation`);
+  const c={};for(const slot of SLOTS){const h=cleanHex(raw.colors?.[slot.key]);if(!h)throw Error(`${name}: invalid ${slot.label} colour`);c[slot.key]=h;}
+  return{id:cloudUuid(),name,species,patternIndex:p,skinVariation:v,themeIndex:0,previewSex:raw.previewSex==="female"?"female":"male",colors:c,
+    favorite:Boolean(raw.favorite),tags:cleanCloudTags(raw.tags||[]),visibility:cleanVisibility(raw.visibility)};
+}
+async function importCloudFile(file){
+  if(!me)return toast("Sign in with Steam first");
+  if(!bridgeOnline)return toast("FOGGY server bridge is offline");
+  if(!file)return;
+  if(file.size>512*1024)return toast("Import file is too large");
+  let parsed;try{parsed=JSON.parse(await file.text());}catch{return toast("Import file is not valid JSON");}
+  let raw=[];
+  if(Array.isArray(parsed))raw=parsed;
+  else if(Array.isArray(parsed?.skins))raw=parsed.skins;
+  else if(parsed?.skin)raw=[parsed.skin];
+  else if(parsed?.species&&parsed?.colors)raw=[parsed];
+  else return toast("No skins found in import file");
+  if(!raw.length)return toast("Import file contains no skins");
+  if(raw.length>50)return toast("Import supports up to 50 skins at once");
+  let skins;try{skins=raw.map(normalizeImportedSkin);}catch(e){return toast(e.message);}
+  try{
+    setCloudStatus(`Importing ${skins.length} skin${skins.length===1?"":"s"}…`,"warn");
+    const r=await cloudOp("import",{skins});
+    await refreshCloudLibrary(true);
+    const imported=Number(r.data?.imported||0),skipped=Number(r.data?.skipped||0);
+    toast(`Imported ${imported}${skipped?` · skipped ${skipped} duplicate${skipped===1?"":"s"}`:""}`);
+  }catch(e){toast(e.message);setCloudStatus(e.message,"bad");}
+}
+async function saveCloudMetadata(){
+  const s=selectedCloud();if(!s)return toast("Choose a Steam skin first");
+  const tags=cleanCloudTags($("cloudTags").value),visibility=cleanVisibility($("cloudVisibility").value);
+  if(await mutateCloud("metadata",{id:s.id,tags,visibility},"Cloud metadata saved"))renderCloudMeta();
+}
 
 
 const APPLY_STAGE_ORDER=["sending","queued","delivered","accepted","applied"];
@@ -504,7 +615,7 @@ async function applySkin(){
 }
 
 
-buildSpecies();buildColors();buildPresets();refreshSaved();renderCloudLibrary();renderApplyHistory();readAuthHash();renderAll();refreshMe();refreshServerStatus();
+buildSpecies();buildColors();buildPresets();buildCloudFilters();refreshSaved();renderCloudLibrary();renderApplyHistory();readAuthHash();renderAll();refreshMe();refreshServerStatus();
 setInterval(refreshServerStatus,10000);
 
 $("species").onchange=e=>{pushHistory();selected=SPECIES.find(s=>s.slug===e.target.value)||SPECIES[0];patternIndex=0;renderAll();};
@@ -520,6 +631,16 @@ $("loadCloud").onclick=()=>{const s=selectedCloud();if(s)loadCloudSkin(s,s.id);e
 $("favoriteCloud").onclick=favoriteCloudSkin;$("renameCloud").onclick=renameCloudSkin;$("duplicateCloud").onclick=duplicateCloudSkin;$("deleteCloud").onclick=deleteCloudSkin;
 $("loadLastApplied").onclick=()=>{const s=cloudLibrary.lastApplied?.skin;if(s)loadCloudSkin(s,"");else toast("No last applied skin recorded yet");};
 $("cloudSkins").onchange=renderCloudLibrary;
+$("cloudSearch").addEventListener("input",renderCloudLibrary);
+$("cloudSpeciesFilter").onchange=renderCloudLibrary;
+$("cloudSort").onchange=renderCloudLibrary;
+$("cloudFavoritesOnly").onclick=()=>{$("cloudFavoritesOnly").classList.toggle("active");$("cloudFavoritesOnly").textContent=$("cloudFavoritesOnly").classList.contains("active")?"★ Favourites only":"☆ Favourites only";renderCloudLibrary();};
+$("clearCloudFilters").onclick=()=>{$("cloudSearch").value="";$("cloudSpeciesFilter").value="";$("cloudSort").value="updated";$("cloudFavoritesOnly").classList.remove("active");$("cloudFavoritesOnly").textContent="☆ Favourites only";renderCloudLibrary();};
+$("saveCloudMeta").onclick=saveCloudMetadata;
+$("exportCloud").onclick=exportSelectedCloud;
+$("exportCloudAll").onclick=exportCloudLibrary;
+$("importCloud").onclick=()=>$("cloudImportFile").click();
+$("cloudImportFile").onchange=async e=>{const f=e.target.files?.[0];e.target.value="";if(f)await importCloudFile(f);};
 $("copyCode").onclick=async()=>{try{await navigator.clipboard.writeText(shareCode());toast("Share code copied");}catch{prompt("Copy this code",shareCode());}};
 $("importCode").onclick=()=>importCode($("shareCode").value);
 $("undo").onclick=()=>{if(!history.length)return;future.push(snapshot());restore(history.pop());};
