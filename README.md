@@ -106,3 +106,7 @@ evrima-skins-api/
 ## Deployment
 
 See [DEPLOYMENT.md](DEPLOYMENT.md). Normal website updates should never replace `config.js` unless the Railway public URL actually changes.
+
+## Preview asset caching
+
+Web v0.8.3 stores successfully downloaded Evrima preview assets in the browser Cache Storage API, so the same browser does not need to redownload them after a Railway restart or redeploy. Railway also exposes live first-download progress and keeps its existing server-side cache. If a persistent Railway volume is mounted later, set `ASSET_CACHE_DIR` to a path on that volume; otherwise the Railway cache remains temporary while the browser cache remains persistent.

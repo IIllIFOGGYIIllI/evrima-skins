@@ -45,8 +45,11 @@ const ASSET_HOST="islepilot.eu";
 const ASSET_PREFIX="/cdn/skinviewer/";
 const ASSET_MAX_BYTES=64*1024*1024;
 const ASSET_IDLE_TIMEOUT_MS=30000;
-const ASSET_CACHE_ROOT=path.join(os.tmpdir(),"foggy-evrima-skin-assets");
+const ASSET_CACHE_ROOT=process.env.ASSET_CACHE_DIR
+  ?path.resolve(String(process.env.ASSET_CACHE_DIR))
+  :path.join(os.tmpdir(),"foggy-evrima-skin-assets");
 const assetInflight=new Map();
+const assetProgress=new Map();
 let assetQueue=Promise.resolve();
 
 function assetSource(raw){
@@ -69,6 +72,24 @@ function assetType(file){
 }
 function assetError(message,code="ASSET_UPSTREAM"){
   const e=new Error(message);e.code=code;return e;
+}
+function setAssetProgress(info,patch){
+  const prev=assetProgress.get(info.key)||{key:info.key,state:"queued",received:0,total:0,startedAt:Date.now(),updatedAt:Date.now()};
+  const next={...prev,...patch,updatedAt:Date.now()};
+  assetProgress.set(info.key,next);
+  return next;
+}
+function pruneAssetProgress(){
+  const cutoff=Date.now()-15*60*1000;
+  for(const [key,p] of assetProgress)if((p.updatedAt||0)<cutoff)assetProgress.delete(key);
+}
+async function assetStatus(info){
+  pruneAssetProgress();
+  const hit=await cachedAsset(info);
+  if(hit)return{state:"cached",key:info.key,received:hit.size,total:hit.size,size:hit.size,cacheRootPersistent:Boolean(process.env.ASSET_CACHE_DIR)};
+  const p=assetProgress.get(info.key);
+  if(p)return{state:p.state||"queued",key:info.key,received:Number(p.received||0),total:Number(p.total||0),startedAt:p.startedAt||null,updatedAt:p.updatedAt||null,cacheRootPersistent:Boolean(process.env.ASSET_CACHE_DIR)};
+  return{state:"not-cached",key:info.key,received:0,total:0,cacheRootPersistent:Boolean(process.env.ASSET_CACHE_DIR)};
 }
 async function cachedAsset(info){
   const dest=path.join(ASSET_CACHE_ROOT,...info.parts);
@@ -106,10 +127,13 @@ async function downloadAsset(info,dest){
   await fsp.rm(tmp,{force:true}).catch(()=>{});
   let received=0;
   try{
-    const {resp}=await openAssetStream(info.url);
+    setAssetProgress(info,{state:"connecting",received:0,total:0,startedAt:Date.now(),error:null});
+    const {resp,declared}=await openAssetStream(info.url);
+    setAssetProgress(info,{state:"downloading",received:0,total:Number(declared||0)});
     const limiter=new Transform({
       transform(chunk,enc,cb){
         received+=chunk.length;
+        setAssetProgress(info,{state:"downloading",received,total:Number(declared||0)});
         if(received>ASSET_MAX_BYTES)return cb(assetError("Evrima asset too large","ASSET_TOO_LARGE"));
         cb(null,chunk);
       }
@@ -117,18 +141,23 @@ async function downloadAsset(info,dest){
     await pipeline(resp,limiter,fs.createWriteStream(tmp,{flags:"w"}));
     if(received<=0)throw assetError("Evrima asset was empty","ASSET_UPSTREAM");
     await fsp.rename(tmp,dest);
+    setAssetProgress(info,{state:"cached",received,total:received,size:received});
     return{path:dest,size:received,cache:"MISS"};
   }catch(e){
+    setAssetProgress(info,{state:"failed",received,error:String(e?.message||e)});
     await fsp.rm(tmp,{force:true}).catch(()=>{});
     throw e;
   }
 }
 async function ensureAsset(info){
-  const hit=await cachedAsset(info);if(hit)return hit;
+  const hit=await cachedAsset(info);
+  if(hit){setAssetProgress(info,{state:"cached",received:hit.size,total:hit.size,size:hit.size});return hit;}
   if(assetInflight.has(info.key))return assetInflight.get(info.key);
   const dest=path.join(ASSET_CACHE_ROOT,...info.parts);
+  setAssetProgress(info,{state:"queued",received:0,total:0,startedAt:Date.now(),error:null});
   const task=assetQueue.then(async()=>{
-    const secondHit=await cachedAsset(info);if(secondHit)return secondHit;
+    const secondHit=await cachedAsset(info);
+    if(secondHit){setAssetProgress(info,{state:"cached",received:secondHit.size,total:secondHit.size,size:secondHit.size});return secondHit;}
     return downloadAsset(info,dest);
   });
   // Keep all first-time CDN downloads sequential, matching the researched
@@ -171,12 +200,17 @@ const app=http.createServer(async(req,res)=>{
   cors(req,res);if(req.method==="OPTIONS"){res.writeHead(204);return res.end()}
   const url=new URL(req.url,PUBLIC_BASE_URL||`http://${req.headers.host||"localhost"}`);
   try{
-    if(req.method==="GET"&&url.pathname==="/health")return send(res,200,{ok:true,service:"FOGGY Evrima Skin API",version:"0.6.1"});
+    if(req.method==="GET"&&url.pathname==="/health")return send(res,200,{ok:true,service:"FOGGY Evrima Skin API",version:"0.6.2"});
     if(req.method==="GET"&&url.pathname==="/auth/steam"){if(!PUBLIC_BASE_URL||!SESSION_SECRET)return send(res,503,{error:"Steam auth is not configured"});res.writeHead(302,{Location:openidUrl(),"Cache-Control":"no-store"});return res.end()}
     if(req.method==="GET"&&url.pathname==="/auth/steam/callback"){const steam=await verifySteam(url);if(!steam){res.writeHead(302,{Location:FRONTEND_URL+"#auth=failed"});return res.end()}res.writeHead(302,{Location:FRONTEND_URL+"#session="+encodeURIComponent(signSession(steam)),"Cache-Control":"no-store"});return res.end()}
     if(req.method==="GET"&&url.pathname==="/api/me"){const u=user(req);if(!u)return send(res,401,{error:"Steam sign-in required"});return send(res,200,{steam:u.steam})}
     if(req.method==="GET"&&url.pathname==="/api/public/status")return send(res,200,{server:SERVER_ID,online:Date.now()-lastHeartbeat<15000,lastHeartbeat:lastHeartbeat||null});
     if(req.method==="GET"&&url.pathname==="/api/assets")return await proxyAsset(url,res);
+    if(req.method==="GET"&&url.pathname==="/api/assets/status"){
+      const info=assetSource(url.searchParams.get("url"));
+      if(!info)return send(res,400,{error:"Invalid Evrima asset URL"});
+      return send(res,200,await assetStatus(info));
+    }
 
     if(req.method==="POST"&&url.pathname==="/api/skins/apply"){
       const u=user(req);if(!u)return send(res,401,{error:"Steam sign-in required"});

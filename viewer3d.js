@@ -7,6 +7,8 @@ import { EVRIMA_MODELS, SHARED } from "./evrima-registry.js?v=082";
 const CFG=window.FOGGY_SKIN_CONFIG||{};
 const API=String(CFG.API_BASE||"").replace(/\/$/,"");
 const API_READY=API.startsWith("https://")&&!API.includes("YOUR-RAILWAY");
+const BROWSER_CACHE_NAME="foggy-evrima-preview-assets-v1";
+const PROGRESS_POLL_MS=900;
 const MAX_TEX=2048;
 
 const canvas=document.getElementById("viewer3d");
@@ -63,41 +65,101 @@ function showSource(){
   a.textContent="Evrima viewer asset registry source";shell.appendChild(a);
 }
 function proxyUrl(url){return API+"/api/assets?url="+encodeURIComponent(url);}
-async function fetchAsset(url){
-  if(!API_READY)throw Error("Railway asset service is not configured");
-  let r;
-  try{r=await fetch(proxyUrl(url),{cache:"force-cache"})}
-  catch{throw Error("Railway asset service is temporarily unreachable")}
-  if(!r.ok){
-    let detail="";try{detail=String((await r.json())?.error||"")}catch{}
-    if(r.status===504)throw Error(detail||"Evrima asset CDN stalled; retry the preview");
-    if(r.status===502)throw Error(detail||"Evrima asset CDN is temporarily unavailable");
-    if(r.status===404)throw Error("This Evrima preview asset was not found");
-    throw Error(detail||`Evrima asset request failed (${r.status})`);
+function statusUrl(url){return API+"/api/assets/status?url="+encodeURIComponent(url);}
+function assetName(url){try{return decodeURIComponent(new URL(url).pathname.split("/").pop()||"asset")}catch{return"asset"}}
+function fmtBytes(n){
+  n=Number(n||0);if(!n)return"0 B";
+  if(n<1024)return`${n} B`;if(n<1024*1024)return`${(n/1024).toFixed(1)} KB`;
+  return`${(n/1024/1024).toFixed(1)} MB`;
+}
+function progressText(label,p){
+  const state=String(p?.state||"").toLowerCase(),received=Number(p?.received||0),total=Number(p?.total||0);
+  if(state==="browser-cache")return`${label} · browser cache`;
+  if(state==="cached")return`${label} · Railway cache`;
+  if(state==="queued")return`${label} · queued`;
+  if(state==="connecting")return`${label} · connecting…`;
+  if(state==="downloading"){
+    if(total>0){
+      const pct=Math.max(0,Math.min(100,received/total*100));
+      return`${label} · ${fmtBytes(received)} / ${fmtBytes(total)} (${pct.toFixed(0)}%)`;
+    }
+    return`${label} · ${fmtBytes(received)} downloaded`;
   }
-  return r.arrayBuffer();
+  return`${label}…`;
+}
+async function browserCache(){
+  if(!("caches" in window))return null;
+  try{return await caches.open(BROWSER_CACHE_NAME)}catch{return null}
+}
+async function pollAssetStatus(url,label,onProgress,stop){
+  if(!API_READY)return;
+  while(!stop.done){
+    try{
+      const r=await fetch(statusUrl(url),{cache:"no-store"});
+      if(r.ok){
+        const p=await r.json();
+        onProgress?.(progressText(label,p),p);
+        if(p.state==="cached"||p.state==="failed")return;
+      }
+    }catch{}
+    await new Promise(r=>setTimeout(r,PROGRESS_POLL_MS));
+  }
+}
+async function fetchAsset(url,onProgress){
+  if(!API_READY)throw Error("Railway asset proxy is not configured");
+  const key=proxyUrl(url),label=assetName(url);
+  const cache=await browserCache();
+  if(cache){
+    try{
+      const hit=await cache.match(key);
+      if(hit){
+        onProgress?.(progressText(label,{state:"browser-cache"}),{state:"browser-cache"});
+        return await hit.arrayBuffer();
+      }
+    }catch{}
+  }
+
+  const stop={done:false};
+  const progressTask=pollAssetStatus(url,label,onProgress,stop);
+  try{
+    onProgress?.(`${label} · checking cache…`,{state:"checking"});
+    const r=await fetch(key,{cache:"no-store"});
+    if(!r.ok){
+      let detail="";try{detail=(await r.json()).error||""}catch{}
+      throw Error(detail||`asset ${r.status}: ${label}`);
+    }
+    if(cache){
+      try{await cache.put(key,r.clone())}catch(e){console.warn("[FOGGY Preview] browser asset cache write skipped",e);}
+    }
+    const buf=await r.arrayBuffer();
+    onProgress?.(`${label} · ready (${fmtBytes(buf.byteLength)})`,{state:"ready",received:buf.byteLength,total:buf.byteLength});
+    return buf;
+  }finally{
+    stop.done=true;
+    await progressTask.catch(()=>{});
+  }
 }
 function remember(map,key,value){
   if(map.size>=CACHE_MAX&&!map.has(key))map.delete(map.keys().next().value);
   map.set(key,value);return value;
 }
-function loadGltf(entry){
+function loadGltf(entry,onProgress){
   if(gltfCache.has(entry.name))return gltfCache.get(entry.name);
-  const p=(async()=>gltfLoader.parseAsync(await fetchAsset(entry.glbModel),""))();
+  const p=(async()=>gltfLoader.parseAsync(await fetchAsset(entry.glbModel,onProgress),""))();
   p.catch(()=>gltfCache.delete(entry.name));return remember(gltfCache,entry.name,p);
 }
-async function decodeImage(url){
-  const buf=await fetchAsset(url),bitmap=await createImageBitmap(new Blob([buf]));
+async function decodeImage(url,onProgress){
+  const buf=await fetchAsset(url,onProgress),bitmap=await createImageBitmap(new Blob([buf]));
   const scale=Math.min(1,MAX_TEX/Math.max(bitmap.width,bitmap.height));
   const w=Math.max(1,Math.round(bitmap.width*scale)),h=Math.max(1,Math.round(bitmap.height*scale));
   const c=document.createElement("canvas");c.width=w;c.height=h;
   const ctx=c.getContext("2d",{willReadFrequently:true});ctx.drawImage(bitmap,0,0,w,h);bitmap.close();
   return ctx.getImageData(0,0,w,h);
 }
-function loadImageData(url){
+function loadImageData(url,onProgress){
   if(!url)return Promise.resolve(null);
   if(imageCache.has(url))return imageCache.get(url);
-  const p=decodeImage(url);p.catch(()=>imageCache.delete(url));return remember(imageCache,url,p);
+  const p=decodeImage(url,onProgress);p.catch(()=>imageCache.delete(url));return remember(imageCache,url,p);
 }
 function toCanvas(img){const c=document.createElement("canvas");c.width=img.width;c.height=img.height;c.getContext("2d").putImageData(img,0,0);return c;}
 function sampleWrapped(img,x,y){const xi=((x%img.width)+img.width)%img.width,yi=((y%img.height)+img.height)%img.height;return(yi*img.width+xi)*4;}
@@ -160,12 +222,12 @@ async function buildSkin(entry,onStage=()=>{}){
     const pk=statePatternKey(entry),patternUrl=entry.patterns[pk];
     const tmcUrl=entry.patternMasks?.[pk]||entry.maskMap||null;
     onStage("Loading source pattern…");
-    const pattern=await loadImageData(patternUrl);
+    const pattern=await loadImageData(patternUrl,(txt,p)=>onStage("Pattern · "+txt,p));
     let tmc=null,rac=null,normal=null,detail=null;
-    if(tmcUrl){onStage("Loading material mask…");tmc=await loadImageData(tmcUrl).catch(()=>null);}
-    onStage("Loading cavity map…");rac=await loadImageData(entry.racMap).catch(()=>null);
-    onStage("Loading species normal map…");normal=await loadImageData(entry.normalMap).catch(()=>null);
-    onStage("Loading skin detail normal…");detail=await loadImageData(SHARED.detailNormal).catch(()=>null);
+    if(tmcUrl){onStage("Loading material mask…");tmc=await loadImageData(tmcUrl,(txt,p)=>onStage("Mask · "+txt,p)).catch(()=>null);}
+    onStage("Loading cavity map…");rac=await loadImageData(entry.racMap,(txt,p)=>onStage("RAC · "+txt,p)).catch(()=>null);
+    onStage("Loading species normal map…");normal=await loadImageData(entry.normalMap,(txt,p)=>onStage("Normal · "+txt,p)).catch(()=>null);
+    onStage("Loading skin detail normal…");detail=await loadImageData(SHARED.detailNormal,(txt,p)=>onStage("Detail normal · "+txt,p)).catch(()=>null);
     onStage("Building Evrima material…");
     return{map:compositeMap(pattern,state.colors,tmc,rac),normal:normal&&detail?compositeNormal(normal,detail,entry.detailScale||12):(normal?toCanvas(normal):null)};
   })();
@@ -210,7 +272,7 @@ async function buildScene(){
   currentEntry=entry;currentSlug=slug;canvas.style.display="block";fallback.style.display="none";showMessage("");
   showLoading(true,`Downloading ${entry.name} model…`);emitStatus("loading","LOADING EVRIMA MODEL…");
   try{
-    const gltf=await loadGltf(entry);if(gen!==generation)return;
+    const gltf=await loadGltf(entry,(txt)=>{if(gen===generation)showLoading(true,`Model · ${txt}`);});if(gen!==generation)return;
     showLoading(true,`Loading ${entry.name} skin maps…`);emitStatus("loading","LOADING EVRIMA SKIN MAPS…");
     const skin=await buildSkin(entry,stage=>showLoading(true,stage));if(gen!==generation)return;
     disposeRoot();currentEntry=entry;currentSlug=slug;currentMode=state?.mode==="2d"?"2d":state?.mode==="hq"?"hq":"skin3d";

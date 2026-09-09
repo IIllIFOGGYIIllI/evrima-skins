@@ -1,3 +1,11 @@
+## Web v0.8.3 / API v0.6.2 — Persistent Preview Cache + Progress
+
+- Adds live byte/percentage progress for first-time Evrima model and texture downloads.
+- Adds browser Cache Storage persistence so previously loaded preview assets survive Railway restarts/redeploys on the same browser.
+- Adds `/api/assets/status` with queued/connecting/downloading/cached state.
+- Adds optional `ASSET_CACHE_DIR` support for a future persistent Railway volume.
+- Preserves the verified species registry and researched rendering/material pipeline.
+
 # Changelog
 
 ## Website v0.8.2 / API v0.6.1

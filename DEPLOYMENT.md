@@ -1,6 +1,6 @@
 # Deployment
 
-## v0.8.2 update order
+## v0.8.3 update order
 
 This release fixes the live Railway asset transport and the GitHub Pages loading strategy. Commit the Railway and frontend files together so the service redeploys before/while Pages refreshes. No environment-variable change is required.
 
@@ -40,7 +40,7 @@ Service root remains:
 
 No new environment variable is required. Existing variables remain unchanged.
 
-After deployment, `/health` should report API version `0.6.1`.
+After deployment, `/health` should report API version `0.6.2`.
 
 ## GitHub Pages
 
@@ -48,7 +48,7 @@ After the commit finishes deploying:
 
 1. Open the live skin creator.
 2. Hard-refresh with `Ctrl + Shift + R`.
-3. Confirm the header shows **Web v0.8.2**.
+3. Confirm the header shows **Web v0.8.3**.
 4. Test Tyrannosaurus first.
 5. Change Pattern 1 → 2 → 3 and confirm the source texture changes.
 6. Test several different species such as Deinosuchus, Omniraptor, Triceratops and Pteranodon.
@@ -58,7 +58,7 @@ Austroraptor intentionally uses its reference image until a verified exact asset
 
 ## Suggested commit messages
 
-For the full v0.8.2 update in one commit:
+For the full v0.8.3 update in one commit:
 
 ```text
 Fix Evrima asset streaming and preview stability
@@ -75,3 +75,7 @@ For future preview-only GitHub Pages updates, use a short message such as:
 ```text
 Improve Evrima skin previews
 ```
+
+## Optional persistent Railway cache
+
+No new variable is required for v0.8.3. The browser now persistently caches preview assets on each device. If you later attach a Railway volume, you can additionally set `ASSET_CACHE_DIR` to a directory on that mounted volume (for example `/data/foggy-evrima-skin-assets`) so Railway's own asset cache also survives redeploys.
