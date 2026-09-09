@@ -49,7 +49,7 @@ function normalizeCommunitySnapshot(raw){
 }
 function normalizeCommunityItem(raw){
   raw=raw&&typeof raw==="object"?raw:{};const id=cleanUuid(raw.id),title=cleanName(raw.title),visibility=cleanPublishVisibility(raw.visibility),snapshot=normalizeCommunitySnapshot(raw.snapshot);if(!id||!title||!visibility||!snapshot)return null;
-  return{id,title,description:cleanDescription(raw.description),visibility,snapshotVersion:Math.max(1,Math.floor(Number(raw.snapshotVersion)||1)),snapshot,publishedAt:Math.max(0,Number(raw.publishedAt)||0),updatedAt:Math.max(0,Number(raw.updatedAt)||0)};
+  return{id,title,description:cleanDescription(raw.description),visibility,snapshotVersion:Math.max(1,Math.floor(Number(raw.snapshotVersion)||1)),snapshot,publishedAt:Math.max(0,Number(raw.publishedAt)||0),updatedAt:Math.max(0,Number(raw.updatedAt)||0),saveCount:Math.max(0,Math.floor(Number(raw.saveCount)||0)),favoriteCount:Math.max(0,Math.floor(Number(raw.favoriteCount)||0)),featured:Boolean(raw.featured)};
 }
 function replaceCommunityCache(items,revision=0){communityCache.clear();for(const raw of Array.isArray(items)?items:[]){const x=normalizeCommunityItem(raw);if(x)communityCache.set(x.id,x)}communityRevision=Math.max(0,Number(revision)||0);communityCacheAt=Date.now()}
 function upsertCommunityCache(raw){const x=normalizeCommunityItem(raw);if(x){communityCache.set(x.id,x);communityCacheAt=Date.now()}return x}
@@ -263,7 +263,7 @@ const app=http.createServer(async(req,res)=>{
   cors(req,res);if(req.method==="OPTIONS"){res.writeHead(204);return res.end()}
   const url=new URL(req.url,PUBLIC_BASE_URL||`http://${req.headers.host||"localhost"}`);
   try{
-    if(req.method==="GET"&&url.pathname==="/health")return send(res,200,{ok:true,service:"FOGGY Evrima Skin API",version:"0.8.0"});
+    if(req.method==="GET"&&url.pathname==="/health")return send(res,200,{ok:true,service:"FOGGY Evrima Skin API",version:"0.8.1"});
     if(req.method==="GET"&&url.pathname==="/auth/steam"){if(!PUBLIC_BASE_URL||!SESSION_SECRET)return send(res,503,{error:"Steam auth is not configured"});res.writeHead(302,{Location:openidUrl(),"Cache-Control":"no-store"});return res.end()}
     if(req.method==="GET"&&url.pathname==="/auth/steam/callback"){const steam=await verifySteam(url);if(!steam){res.writeHead(302,{Location:FRONTEND_URL+"#auth=failed"});return res.end()}res.writeHead(302,{Location:FRONTEND_URL+"#session="+encodeURIComponent(signSession(steam)),"Cache-Control":"no-store"});return res.end()}
     if(req.method==="GET"&&url.pathname==="/api/me"){const u=user(req);if(!u)return send(res,401,{error:"Steam sign-in required"});return send(res,200,{steam:u.steam})}
@@ -303,7 +303,7 @@ const app=http.createServer(async(req,res)=>{
     }
 
     if(req.method==="GET"&&url.pathname==="/api/community/public"){
-      const items=[...communityCache.values()].filter(x=>x.visibility==="public").sort((a,b)=>b.updatedAt-a.updatedAt).slice(0,100);return send(res,200,{items,updatedAt:communityCacheAt,bridgeOnline:bridgeIsOnline()});
+      const items=[...communityCache.values()].filter(x=>x.visibility==="public").sort((a,b)=>b.updatedAt-a.updatedAt).slice(0,200);return send(res,200,{items,updatedAt:communityCacheAt,bridgeOnline:bridgeIsOnline()});
     }
     const communityItemMatch=url.pathname.match(/^\/api\/community\/item\/([0-9a-f-]+)$/i);
     if(req.method==="GET"&&communityItemMatch){const id=cleanUuid(communityItemMatch[1]);if(!id)return send(res,400,{error:"Invalid published skin ID"});const item=communityCache.get(id);if(!item)return send(res,404,{error:"Published skin not found or no longer shared"});return send(res,200,{item,updatedAt:communityCacheAt,bridgeOnline:bridgeIsOnline()})}
@@ -311,11 +311,12 @@ const app=http.createServer(async(req,res)=>{
       const u=user(req);if(!u)return send(res,401,{error:"Steam sign-in required"});if(!bridgeIsOnline())return send(res,503,{error:"FOGGY server bridge is offline or restarting"});
       if(!allowCommunityRate(req.socket.remoteAddress||"unknown")||!allowSteamCommunity(u.steam))return send(res,429,{error:"Too many publishing requests. Try again in a minute."});
       const b=await readBody(req),action=String(b.action||"").toLowerCase(),payload={};
-      if(action==="mine"){}
+      if(action==="mine"||action==="favorites"){}
       else if(action==="publish"){payload.sourceSkinId=cleanUuid(b.sourceSkinId);payload.title=cleanName(b.title);payload.description=cleanDescription(b.description);payload.visibility=cleanPublishVisibility(b.visibility);if(!payload.sourceSkinId||!payload.title||!payload.visibility)return send(res,400,{error:"Invalid publish request"});}
       else if(action==="update"){payload.id=cleanUuid(b.id);payload.title=cleanName(b.title);payload.description=cleanDescription(b.description);payload.visibility=cleanPublishVisibility(b.visibility);if(!payload.id||!payload.title||!payload.visibility)return send(res,400,{error:"Invalid published skin update"});}
-      else if(action==="unpublish"||action==="delete"){payload.id=cleanUuid(b.id);if(!payload.id)return send(res,400,{error:"Invalid published skin ID"});}
-      else return send(res,400,{error:"Unsupported publishing action"});
+      else if(action==="unpublish"||action==="delete"||action==="save"){payload.id=cleanUuid(b.id);if(!payload.id)return send(res,400,{error:"Invalid published skin ID"});}
+      else if(action==="favorite"){payload.id=cleanUuid(b.id);payload.favorite=Boolean(b.favorite);if(!payload.id)return send(res,400,{error:"Invalid published skin ID"});}
+      else return send(res,400,{error:"Unsupported community action"});
       const c=queueLibraryCommand(u.steam,"community-"+action,payload,true);return send(res,202,{ok:true,id:c.id,status:c.status});
     }
 
@@ -378,7 +379,7 @@ const app=http.createServer(async(req,res)=>{
       if(String(b.steam||"")!==c.steam)return send(res,409,{error:"Steam ownership mismatch"});
       if(!["delivered","queued"].includes(c.status))return send(res,200,{ok:true,ignored:true,status:c.status});
       c.status=b.ok?"completed":"failed";c.message=String(b.message||(b.ok?"Library updated":"Library operation failed")).slice(0,300);c.data=b.ok&&b.data!==undefined?b.data:null;
-      if(b.ok&&c.action.startsWith("community-")){if((c.action==="community-publish"||c.action==="community-update")&&c.data&&c.data.item)upsertCommunityCache(c.data.item);if((c.action==="community-unpublish"||c.action==="community-delete")&&c.data&&c.data.id)communityCache.delete(String(c.data.id));communityCacheAt=Date.now()}
+      if(b.ok&&c.action.startsWith("community-")){if(["community-publish","community-update","community-save","community-favorite"].includes(c.action)&&c.data&&c.data.item)upsertCommunityCache(c.data.item);if((c.action==="community-unpublish"||c.action==="community-delete")&&c.data&&c.data.id)communityCache.delete(String(c.data.id));communityCacheAt=Date.now()}
       return send(res,200,{ok:true,status:c.status})
     }
     if(req.method==="POST"&&url.pathname==="/api/server/heartbeat"){

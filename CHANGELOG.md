@@ -1,3 +1,16 @@
+## Web v0.10.1 / API v0.8.1 / Bridge v0.8.1 — Community Discovery + Mobile UX
+
+- Adds a dedicated Community page alongside Studio, My Library and Publish.
+- Adds public browsing with search, species filters, clickable tags, favourites-only filtering, and New / Popular / Featured / Recently Updated views.
+- Adds community cards with colour palettes, pattern/variation metadata, save and favourite counts, descriptions and share links.
+- Adds persistent Steam-linked community favourites.
+- Adds Save to My Library using a server-side snapshot clone with exact-design duplicate protection and the existing 50-skin limit.
+- Adds direct Community Apply through the existing authenticated hardened Apply pipeline.
+- Public browsing remains available while the bridge is offline; save/favourite/apply actions still require the live bridge.
+- Adds mobile-first bottom navigation, safe-area support, larger touch targets, iOS zoom-safe form controls and responsive Community/renderer layouts.
+- Existing community and library JSON files migrate in place; no wipe, UE4SS change, config change or new Railway variable is required.
+- Featured catalogue metadata is supported; explicit moderation/curation controls are deferred to Step 6D.
+
 ## Web v0.10.0 / API v0.8.0 / Bridge v0.8.0 — Publishing Foundation
 
 - Splits the site into Studio, My Library and Publish top-level pages.

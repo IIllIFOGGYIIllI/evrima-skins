@@ -77,6 +77,40 @@
 .publish-card{padding:16px}.publish-grid .shared-publication{grid-column:1/-1}.field-stack{display:grid;gap:5px;margin:9px 0}.field-stack>span{font-size:8px;color:#858d82;text-transform:uppercase;letter-spacing:.08em}.field-stack input,.field-stack select,.field-stack textarea{width:100%;box-sizing:border-box}.field-stack textarea{resize:vertical;min-height:82px}
 .publish-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:10px}.publish-actions.four{grid-template-columns:repeat(4,minmax(0,1fr))}.publish-source-meta,.published-details{border:1px solid #343a31;background:rgba(8,12,8,.54);padding:9px;font-size:9px;line-height:1.55;color:#9da59a;margin-top:9px;white-space:pre-line}.published-details strong{color:#d6d9d2}.shared-publication h3{margin:2px 0 7px}.shared-publication p{color:#a0a79d;line-height:1.55}.publishing-good{color:#a9c985}.publishing-warn{color:#d5b866}.publishing-bad{color:#d58072}
 @media(max-width:850px){.library-page-grid,.publish-grid{grid-template-columns:1fr}.publish-grid .shared-publication{grid-column:auto}.app-tabs{overflow-x:auto}.app-tabs button{min-width:95px}.app-tab-note{display:none}.publish-actions.four{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* v0.10.1 Community Discovery + mobile UX */
+.app-tabs{position:sticky;top:0;z-index:30;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.community-toolbar{padding:14px;display:grid;gap:10px}
+.community-filters{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(150px,.7fr) minmax(150px,.7fr) auto;gap:8px}
+.community-toggle-row{display:flex;gap:7px;flex-wrap:wrap;align-items:center}.community-toggle-row button.active{border-color:#d4b454;background:#4e4324;color:#ffe89b}
+.community-summary{font-size:9px;color:#9ca195;margin-left:auto}
+.community-tags{display:flex;gap:6px;flex-wrap:wrap;min-height:0}.community-tag{font-size:8px;padding:5px 7px;border-radius:999px}.community-tag.active{border-color:#d4b454;color:#ffe89b;background:#3d351f}
+.community-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.community-card{padding:13px;display:grid;gap:9px;min-width:0}.community-card-head{display:flex;justify-content:space-between;gap:9px;align-items:flex-start}.community-card h3{margin:0;font-size:17px;line-height:1.2;overflow-wrap:anywhere}.community-species{font-size:8px;color:#d7c06c;text-transform:uppercase;letter-spacing:.08em;white-space:nowrap}.community-description{margin:0;color:#9ca195;font-size:9px;line-height:1.5;min-height:40px}.community-palette{display:grid;grid-template-columns:repeat(10,1fr);gap:2px;height:10px}.community-palette span{border:1px solid rgba(255,255,255,.16)}
+.community-card-tags{display:flex;gap:5px;flex-wrap:wrap}.community-card-tags span{font-size:7px;border:1px solid #3d4137;padding:4px 6px;border-radius:999px;color:#afb5a9}.community-card-meta{display:flex;justify-content:space-between;gap:8px;font-size:8px;color:#7f877b}.community-stats{display:flex;gap:8px;white-space:nowrap}
+.community-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.community-actions button{min-width:0;padding:8px 6px;font-size:8px}.community-actions .community-apply{grid-column:span 2}.community-actions .community-save{grid-column:span 2}.community-actions .favourited{border-color:#d4b454;color:#ffe89b;background:#4e4324}
+.community-empty{padding:28px;text-align:center;color:#92998f;border:1px dashed #41463b;background:rgba(8,12,8,.45)}
+.shared-community{padding:14px;display:grid;gap:8px}.shared-community[hidden]{display:none}.shared-community h3{margin:0}.shared-community-actions{display:flex;gap:7px;flex-wrap:wrap}
+.community-featured-mark{font-size:8px;color:#ffe89b;border:1px solid #705f31;background:#3d351f;padding:3px 5px;border-radius:999px}
+.mobile-only{display:none}
+@media(max-width:1180px){.community-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.community-filters{grid-template-columns:1fr 1fr}.community-filters #communitySearch{grid-column:1/-1}}
+@media(max-width:700px){
+  html{scroll-padding-top:72px}body{padding:7px;padding-bottom:calc(82px + env(safe-area-inset-bottom))}.shell{width:100%;overflow:visible}
+  .topbar{gap:9px;margin-bottom:8px}.topbar h1{font-size:clamp(28px,11vw,42px)}.topbar p{font-size:11px;line-height:1.35}.statuses{gap:5px}.status{padding:6px 8px;font-size:8px}
+  .app-tabs{position:fixed;left:0;right:0;bottom:0;top:auto;z-index:100;margin:0;padding:7px max(7px,env(safe-area-inset-right)) calc(7px + env(safe-area-inset-bottom)) max(7px,env(safe-area-inset-left));display:grid;grid-template-columns:repeat(4,1fr);gap:5px;background:rgba(8,11,8,.97);border-top:1px solid #4d4935;box-shadow:0 -8px 28px rgba(0,0,0,.45);overflow:visible}
+  .app-tabs button{min-width:0;min-height:46px;padding:7px 4px;font-size:9px;white-space:normal}.app-tabs-spacer,.app-tab-note{display:none}
+  .page-heading{padding:12px}.page-heading h2{font-size:22px}.page-heading p{font-size:10px}
+  .panel,.publish-card,.community-toolbar,.community-card{border-left-width:1px;border-right-width:1px}.preview-panel,.editor-panel{padding:11px}
+  .viewer-shell{height:min(64svh,440px);min-height:340px}.viewer-topline{left:7px;right:7px;top:7px;align-items:flex-start}.viewer-actions{flex-wrap:wrap;justify-content:flex-end}.preview-mode-tabs{gap:3px}.tiny{min-height:36px;padding:7px 6px}
+  .scene-controls{left:7px;right:7px;bottom:34px;width:auto;max-height:170px;overflow:auto;padding:8px;grid-template-columns:1fr 1fr}.scene-title{grid-column:1/-1}.scene-controls label{font-size:8px}.viewer-hint{display:none}.reference-card{right:7px}
+  input,select,textarea,button{font-size:16px}.skin-name{font-size:22px!important}.quick-actions button,.history button,.presets button,.pattern-buttons button,.segmented button,.tiny,.community-actions button,.community-tag{font-size:10px}
+  button{min-height:42px}.color-card{grid-template-columns:minmax(0,1fr) 48px 92px;padding:8px;gap:6px}.hex-input{width:92px!important;font-size:12px!important}.color-name{font-size:10px}
+  .community-filters{grid-template-columns:1fr}.community-filters #communitySearch{grid-column:auto}.community-grid{grid-template-columns:1fr}.community-toolbar{padding:10px}.community-summary{width:100%;margin-left:0}.community-card{padding:11px}.community-description{min-height:0}.community-actions{grid-template-columns:1fr 1fr}.community-actions .community-apply,.community-actions .community-save{grid-column:auto}.community-actions button{font-size:10px;min-height:42px}
+  .publish-actions,.publish-actions.four{grid-template-columns:1fr 1fr}.field-stack input,.field-stack select,.field-stack textarea,.cloud-tools input,.cloud-tools select,.cloud-meta input,.cloud-meta select{font-size:16px!important}
+  .account-card{align-items:stretch;flex-direction:column}.account-card button{width:100%}.mobile-only{display:block}
+}
+@media(max-width:390px){.app-tabs button{font-size:8px}.scene-controls{grid-template-columns:1fr;max-height:155px}.scene-title{grid-column:auto}.community-actions{grid-template-columns:1fr}.community-actions .community-apply,.community-actions .community-save{grid-column:auto}}
+
 </style>
 </head>
 <body>
@@ -90,14 +124,15 @@
 <div class="statuses">
 <span class="status warn" id="apiStatus">API checking…</span>
 <span class="status warn" id="serverStatus">Bridge checking…</span>
-<span class="status">Web v0.10.0</span>
+<span class="status">Web v0.10.1</span>
 </div>
 </header><nav aria-label="Skin Studio sections" class="app-tabs">
 <button class="active" data-page="studio" type="button">Studio</button>
 <button data-page="library" type="button">My Library</button>
+<button data-page="community" type="button">Community</button>
 <button data-page="publishing" type="button">Publish</button>
 <span class="app-tabs-spacer"></span>
-<span class="app-tab-note">Community browsing arrives next</span>
+<span class="app-tab-note">Browse · save · favourite · apply</span>
 </nav>
 <section class="app-page active" data-app-page="studio" id="page-studio"><main class="creator">
 <section class="preview-panel panel">
@@ -336,7 +371,23 @@
 </details></section>
 </div>
 </main>
-</section><section class="app-page" data-app-page="publishing" id="page-publishing">
+
+</section><section class="app-page" data-app-page="community" id="page-community">
+<main class="page-shell">
+<div class="page-heading"><div><div class="kicker">COMMUNITY SKINS</div><h2>Discover skins</h2><p>Browse public community snapshots, preview them with the Evrima renderer, save your own private copy, favourite designs or apply one directly to your live dinosaur.</p></div></div>
+<section class="panel shared-community" id="sharedCommunity" hidden>
+<div class="section-head compact"><div><div class="kicker">SHARED SKIN</div><span class="section-sub" id="sharedCommunityVisibility">Public / unlisted snapshot</span></div></div>
+<h3 id="sharedCommunityTitle">Shared skin</h3><p class="community-description" id="sharedCommunityDescription"></p><div class="published-details" id="sharedCommunityMeta"></div>
+<div class="shared-community-actions"><button id="sharedCommunityPreview" type="button">Preview</button><button id="sharedCommunitySave" type="button">Save to My Library</button><button class="primary" id="sharedCommunityApply" type="button">Apply</button></div>
+</section>
+<section class="panel community-toolbar">
+<div class="community-filters"><input id="communitySearch" type="search" placeholder="Search titles, descriptions, species or tags"><select id="communitySpecies"><option value="">All species</option></select><select id="communitySort"><option value="new">New</option><option value="popular">Popular</option><option value="featured">Featured</option><option value="updated">Recently updated</option></select><button id="refreshCommunity" type="button">Refresh</button></div>
+<div class="community-toggle-row"><button id="communityFavoritesOnly" type="button">☆ My favourites</button><button id="communityClear" type="button">Clear filters</button><span class="community-summary" id="communitySummary">Loading community catalogue…</span></div>
+<div class="community-tags" id="communityTags"></div>
+</section>
+<div class="community-grid" id="communityGrid"></div>
+</main>
+<section class="app-page" data-app-page="publishing" id="page-publishing">
 <main class="page-shell">
 <div class="page-heading"><div><div class="kicker">COMMUNITY PUBLISHING</div><h2>Publish skins</h2><p>Publish an explicit snapshot of one of your Steam-library skins. Editing the private original never changes the published copy until you press Update snapshot.</p></div></div>
 <div class="publish-grid">
@@ -372,6 +423,6 @@
 <div class="toast" id="toast"></div>
 <script src="./config.js"></script>
 <script src="./viewer3d.js?v=083" type="module"></script>
-<script src="./app.js?v=100"></script>
+<script src="./app.js?v=101"></script>
 </body>
 </html>

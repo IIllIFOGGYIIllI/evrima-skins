@@ -1,4 +1,4 @@
-# FOGGY Evrima Skin API v0.8.0
+# FOGGY Evrima Skin API v0.8.1
 
 Railway backend for the FOGGY Evrima Skin Studio.
 
@@ -59,8 +59,12 @@ Authenticated users submit library operations through `POST /api/library/op` and
 
 ### Advanced library operations
 
-API v0.8.0 validates and forwards `metadata` operations (`id`, up to 8 tags, visibility) and `import` operations (1–50 validated skins) to Bridge v0.7.2. Visibility accepts only `private`, `unlisted`, or `public`; it is metadata only until the publishing API is introduced. Imported skins pass the same species/pattern/variation/colour validation as normal cloud saves.
+API v0.8.1 validates and forwards `metadata` operations (`id`, up to 8 tags, visibility) and `import` operations (1–50 validated skins) to Bridge v0.7.2. Visibility accepts only `private`, `unlisted`, or `public`; it is metadata only until the publishing API is introduced. Imported skins pass the same species/pattern/variation/colour validation as normal cloud saves.
 
 ### Publishing API
 
-API v0.8.0 adds authenticated `POST /api/community/op` actions (`mine`, `publish`, `update`, `unpublish`, `delete`), public `GET /api/community/public`, and public/unlisted `GET /api/community/item/:id`. Publishing commands reuse the hardened bridge command/result transport, but Steam ownership always comes from the signed session. The bridge heartbeat supplies a sanitized catalogue cache; durable authority remains `SkinWebCommunity.json` on the server machine.
+API v0.8.1 adds authenticated `POST /api/community/op` actions (`mine`, `publish`, `update`, `unpublish`, `delete`), public `GET /api/community/public`, and public/unlisted `GET /api/community/item/:id`. Publishing commands reuse the hardened bridge command/result transport, but Steam ownership always comes from the signed session. The bridge heartbeat supplies a sanitized catalogue cache; durable authority remains `SkinWebCommunity.json` on the server machine.
+
+### Community Discovery v0.8.1
+
+`GET /api/community/public` exposes up to 200 sanitized Public snapshots including save/favourite counts and the prepared featured flag. Authenticated `community-save`, `community-favorite`, and `community-favorites` operations are delegated to Bridge v0.8.1 so ownership, duplicate detection and persistent counters remain authoritative on the server. Unlisted snapshots remain accessible only by exact item link and are never returned by the public catalogue.

@@ -48,7 +48,7 @@ After the commit finishes deploying:
 
 1. Open the live skin creator.
 2. Hard-refresh with `Ctrl + Shift + R`.
-3. Confirm the header shows **Web v0.10.0**.
+3. Confirm the header shows **Web v0.10.1**.
 4. Test Tyrannosaurus first.
 5. Change Pattern 1 → 2 → 3 and confirm the source texture changes.
 6. Test several different species such as Deinosuchus, Omniraptor, Triceratops and Pteranodon.
@@ -84,14 +84,18 @@ No new variable is required for v0.9.0. The browser now persistently caches prev
 
 Replace `FOGGY_SkinWebBridge.ps1` in the dedicated-server root with Bridge v0.7.0. Do not replace `SkinWebBridge.config.json`; the existing API URL and bridge token remain valid. No new Railway variables, database or Railway volume are required. The bridge creates `SkinWebLibrary.json` automatically beside itself and writes it atomically.
 
-## v0.9.2 / API v0.8.0 / Bridge v0.8.0
+## v0.9.2 / API v0.8.1 / Bridge v0.8.1
 
-Install `FOGGY_SkinWebBridge.ps1` v0.7.1 and `main.lua` v0.6.2 on the server **before** deploying API v0.8.0. The new API requires the bridge to include the configured server ID on ACK/result/library-result writes. No new config variables or secrets are required. `SkinWebBridge.replay.json` is created automatically beside the bridge script.
+Install `FOGGY_SkinWebBridge.ps1` v0.7.1 and `main.lua` v0.6.2 on the server **before** deploying API v0.8.1. The new API requires the bridge to include the configured server ID on ACK/result/library-result writes. No new config variables or secrets are required. `SkinWebBridge.replay.json` is created automatically beside the bridge script.
 
-## v0.9.3 / API v0.8.0 / Bridge v0.8.0
+## v0.9.3 / API v0.8.1 / Bridge v0.8.1
 
-Install `FOGGY_SkinWebBridge.ps1` v0.7.2 before deploying API v0.8.0 so tag/visibility metadata and bulk imports persist in `SkinWebLibrary.json`. No config or secret changes are required. Existing library data is upgraded automatically and remains backward-safe; there is no wipe or manual migration.
+Install `FOGGY_SkinWebBridge.ps1` v0.7.2 before deploying API v0.8.1 so tag/visibility metadata and bulk imports persist in `SkinWebLibrary.json`. No config or secret changes are required. Existing library data is upgraded automatically and remains backward-safe; there is no wipe or manual migration.
 
-## v0.10.0 / API v0.8.0 / Bridge v0.8.0
+## v0.10.0 / API v0.8.1 / Bridge v0.8.1
 
-Install Bridge v0.8.0 before deploying API v0.8.0. The bridge automatically creates `SkinWebCommunity.json` in the dedicated-server root; no new environment variables, secrets, UE4SS files, database wipe, or server-manager changes are required. The existing `SkinWebLibrary.json` remains the private library authority.
+Install Bridge v0.8.1 before deploying API v0.8.1. The bridge automatically creates `SkinWebCommunity.json` in the dedicated-server root; no new environment variables, secrets, UE4SS files, database wipe, or server-manager changes are required. The existing `SkinWebLibrary.json` remains the private library authority.
+
+## v0.10.1 / API v0.8.1 / Bridge v0.8.1
+
+Install Bridge v0.8.1 before API v0.8.1. No configuration, secret, UE4SS or server-manager changes are required. Existing `SkinWebCommunity.json` entries migrate in place with `saveCount=0`, `favoriteCount=0`, and `featured=false`; existing `SkinWebLibrary.json` users gain an empty `communityFavorites` list. No wipe is required.

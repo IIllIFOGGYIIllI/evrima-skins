@@ -33,6 +33,7 @@ let session=localStorage.getItem("foggy_skin_session")||"",me=null;
 let history=[],future=[],historyLock=false;
 let cloudLibrary={skins:[],lastApplied:null},activeCloudId="",bridgeOnline=false,cloudBusy=false;
 let publishedMine=[],sharedPublicationItem=null;
+let communityPublic=[],communityFavorites=new Set(),communityBusy=false,communityTagFilter="";
 const APPLY_HISTORY_KEY="foggy_apply_history_v1";
 let activeApplyId="",activeApplyData=null,applyPollToken=0,applyBusy=false;
 const $=id=>document.getElementById(id);
@@ -446,8 +447,8 @@ async function saveCloudMetadata(){
 
 
 
-const APP_PAGES=new Set(["studio","library","publishing"]);
-function currentPageFromUrl(){const q=new URLSearchParams(location.search),p=q.get("view");return APP_PAGES.has(p)?p:(q.get("published")?"publishing":"studio");}
+const APP_PAGES=new Set(["studio","library","community","publishing"]);
+function currentPageFromUrl(){const q=new URLSearchParams(location.search),p=q.get("view");return APP_PAGES.has(p)?p:(q.get("published")?"community":"studio");}
 function setAppPage(page,writeUrl=true){
   if(!APP_PAGES.has(page))page="studio";
   document.querySelectorAll("[data-app-page]").forEach(el=>el.classList.toggle("active",el.dataset.appPage===page));
@@ -455,6 +456,7 @@ function setAppPage(page,writeUrl=true){
   if(writeUrl){const u=new URL(location.href);u.searchParams.set("view",page);history.replaceState(null,"",u.pathname+u.search);}
   if(page==="studio")setTimeout(()=>window.dispatchEvent(new Event("resize")),20);
   if(page==="publishing"&&me)refreshPublishedMine(true);
+  if(page==="community")refreshCommunity(true);
 }
 function cleanPublishDescription(v){return String(v||"").replace(/[\r\t]/g," ").replace(/\n{3,}/g,"\n\n").trim().slice(0,240);}
 function selectedPublishSource(){return (cloudLibrary.skins||[]).find(s=>s.id===$("publishSource")?.value)||null;}
@@ -514,15 +516,63 @@ async function updatePublishedSnapshot(){
 }
 async function unpublishSelected(){const x=selectedPublished();if(!x)return toast("Choose a published skin first");if(!confirm(`Unpublish “${x.title}”? Its public/unlisted link will stop working.`))return;try{await communityOp("unpublish",{id:x.id});await refreshCloudLibrary(true);await refreshPublishedMine(true);toast("Skin unpublished");}catch(e){toast(e.message);}}
 async function deletePublishedSelected(){const x=selectedPublished();if(!x)return toast("Choose a published skin first");if(!confirm(`Delete published record “${x.title}”? This does not delete your Steam-library skin.`))return;try{await communityOp("delete",{id:x.id});await refreshCloudLibrary(true);await refreshPublishedMine(true);toast("Published record deleted");}catch(e){toast(e.message);}}
-function publishedLink(id){const u=new URL(location.href);u.search="";u.searchParams.set("published",id);u.searchParams.set("view","publishing");u.hash="";return u.toString();}
+function publishedLink(id){const u=new URL(location.href);u.search="";u.searchParams.set("published",id);u.searchParams.set("view","community");u.hash="";return u.toString();}
 async function copyPublishedShareLink(){const x=selectedPublished();if(!x||!x.published)return toast("Choose an active published skin first");const link=publishedLink(x.id);try{await navigator.clipboard.writeText(link);toast(x.visibility==="unlisted"?"Unlisted link copied":"Public link copied");}catch{prompt("Copy this link",link);}}
 function previewCommunitySnapshot(item){if(!item?.snapshot)return;pushHistory();restore(item.snapshot);$("skinName").value=item.title||item.snapshot.name||"Published Skin";setAppPage("studio",true);toast("Published snapshot opened in Studio preview");}
 function renderSharedPublication(item){
-  sharedPublicationItem=item||null;const box=$("sharedPublication");if(!box)return;
-  if(!item){box.hidden=true;return;}box.hidden=false;$("sharedPublicationTitle").textContent=item.title||"Shared skin";$("sharedPublicationDescription").textContent=item.description||"No description provided.";
-  const tags=(item.snapshot?.tags||[]).join(", ")||"No tags";$("sharedPublicationMeta").textContent=`${item.snapshot?.species||"unknown"} · Pattern ${Number(item.snapshot?.patternIndex||0)+1} · ${item.visibility}\nTags: ${tags} · Snapshot v${item.snapshotVersion||1}`;
+  sharedPublicationItem=item||null;
+  const oldBox=$("sharedPublication"),newBox=$("sharedCommunity");
+  if(oldBox){oldBox.hidden=!item;if(item){$("sharedPublicationTitle").textContent=item.title||"Shared skin";$("sharedPublicationDescription").textContent=item.description||"No description provided.";const tags=(item.snapshot?.tags||[]).join(", ")||"No tags";$("sharedPublicationMeta").textContent=`${item.snapshot?.species||"unknown"} · Pattern ${Number(item.snapshot?.patternIndex||0)+1} · ${item.visibility}\nTags: ${tags} · Snapshot v${item.snapshotVersion||1}`;}}
+  if(newBox){newBox.hidden=!item;if(item){$("sharedCommunityTitle").textContent=item.title||"Shared skin";$("sharedCommunityDescription").textContent=item.description||"No description provided.";$("sharedCommunityVisibility").textContent=`${String(item.visibility||"public").toUpperCase()} · Snapshot v${item.snapshotVersion||1}`;const tags=(item.snapshot?.tags||[]).join(", ")||"No tags";$("sharedCommunityMeta").textContent=`${item.snapshot?.species||"unknown"} · Pattern ${Number(item.snapshot?.patternIndex||0)+1} · ${["Small","Medium","Large"][Number(item.snapshot?.skinVariation)||0]} variation\nTags: ${tags}`;}}
 }
-async function loadSharedPublicationFromUrl(){const q=new URLSearchParams(location.search),id=q.get("published");if(!id){renderSharedPublication(null);return;}try{const d=await api("/api/community/item/"+encodeURIComponent(id));renderSharedPublication(d.item);setAppPage("publishing",false);}catch(e){renderSharedPublication(null);toast(e.message);}}
+async function loadSharedPublicationFromUrl(){
+  const q=new URLSearchParams(location.search),id=q.get("published");if(!id){renderSharedPublication(null);return;}
+  try{const d=await api("/api/community/item/"+encodeURIComponent(id));renderSharedPublication(d.item);if(q.get("view")!=="publishing")setAppPage("community",false);}catch(e){renderSharedPublication(null);toast(e.message);}
+}
+
+function communitySpeciesName(slug){return SPECIES.find(s=>s.slug===slug)?.name||String(slug||"Unknown");}
+function communityScore(x){return Number(x.saveCount||0)*3+Number(x.favoriteCount||0)*2;}
+function buildCommunitySpecies(){const sel=$("communitySpecies");if(!sel)return;const keep=sel.value;sel.innerHTML="";sel.append(new Option("All species",""));SPECIES.forEach(s=>sel.append(new Option(s.name,s.slug)));if([...sel.options].some(o=>o.value===keep))sel.value=keep;}
+function communityFiltered(){
+  let items=[...communityPublic];const q=String($("communitySearch")?.value||"").trim().toLowerCase(),species=$("communitySpecies")?.value||"",fav=$("communityFavoritesOnly")?.classList.contains("active"),sort=$("communitySort")?.value||"new";
+  if(q)items=items.filter(x=>[x.title,x.description,x.snapshot?.species,...(x.snapshot?.tags||[])].some(v=>String(v||"").toLowerCase().includes(q)));
+  if(species)items=items.filter(x=>x.snapshot?.species===species);if(communityTagFilter)items=items.filter(x=>(x.snapshot?.tags||[]).some(t=>String(t).toLowerCase()===communityTagFilter));if(fav)items=items.filter(x=>communityFavorites.has(x.id));
+  if(sort==="featured")items=items.filter(x=>Boolean(x.featured)).sort((a,b)=>communityScore(b)-communityScore(a)||Number(b.updatedAt||0)-Number(a.updatedAt||0));
+  else if(sort==="popular")items.sort((a,b)=>communityScore(b)-communityScore(a)||Number(b.favoriteCount||0)-Number(a.favoriteCount||0)||Number(b.updatedAt||0)-Number(a.updatedAt||0));
+  else if(sort==="updated")items.sort((a,b)=>Number(b.updatedAt||0)-Number(a.updatedAt||0));
+  else items.sort((a,b)=>Number(b.publishedAt||0)-Number(a.publishedAt||0));
+  return items;
+}
+function renderCommunityTags(){
+  const host=$("communityTags");if(!host)return;const counts=new Map();communityPublic.forEach(x=>(x.snapshot?.tags||[]).forEach(t=>{const k=String(t||"").trim();if(k)counts.set(k,(counts.get(k)||0)+1)}));host.innerHTML="";
+  [...counts.entries()].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0])).slice(0,18).forEach(([tag,count])=>{const b=document.createElement("button");b.type="button";b.className="community-tag"+(communityTagFilter===tag.toLowerCase()?" active":"");b.textContent=`${tag} · ${count}`;b.onclick=()=>{communityTagFilter=communityTagFilter===tag.toLowerCase()?"":tag.toLowerCase();renderCommunity();};host.append(b);});
+}
+function communityPalette(snapshot){return SLOTS.map(s=>`<span style="background:${snapshot?.colors?.[s.key]||"#111111"}"></span>`).join("");}
+function communityCard(x){
+  const article=document.createElement("article");article.className="panel community-card";article.dataset.id=x.id;const fav=communityFavorites.has(x.id),tags=(x.snapshot?.tags||[]).slice(0,6),date=new Date(Number(x.publishedAt||x.updatedAt||Date.now())).toLocaleDateString();
+  article.innerHTML=`<div class="community-card-head"><div><div class="community-species">${escapeHtml(communitySpeciesName(x.snapshot?.species))}</div><h3>${escapeHtml(x.title||"Community skin")}</h3></div>${x.featured?'<span class="community-featured-mark">FEATURED</span>':''}</div><div class="community-palette">${communityPalette(x.snapshot)}</div><p class="community-description">${escapeHtml(x.description||"No description provided.")}</p><div class="community-card-tags">${tags.map(t=>`<span>${escapeHtml(t)}</span>`).join("")}</div><div class="community-card-meta"><span>Pattern ${Number(x.snapshot?.patternIndex||0)+1} · ${["S","M","L"][Number(x.snapshot?.skinVariation)||0]}</span><span class="community-stats"><span>↓ ${Number(x.saveCount||0)}</span><span>★ ${Number(x.favoriteCount||0)}</span><span>${escapeHtml(date)}</span></span></div><div class="community-actions"><button data-action="preview">Preview</button><button class="community-apply primary" data-action="apply">Apply</button><button class="community-save" data-action="save">Save to Library</button><button class="${fav?'favourited':''}" data-action="favorite">${fav?'★ Favourited':'☆ Favourite'}</button><button data-action="link">Copy link</button></div>`;
+  article.querySelector('[data-action="preview"]').onclick=()=>openCommunityInStudio(x,false);article.querySelector('[data-action="apply"]').onclick=()=>openCommunityInStudio(x,true);article.querySelector('[data-action="save"]').onclick=()=>saveCommunityToLibrary(x.id);article.querySelector('[data-action="favorite"]').onclick=()=>toggleCommunityFavorite(x.id,!fav);article.querySelector('[data-action="link"]').onclick=()=>copyCommunityLink(x.id);return article;
+}
+function renderCommunity(){
+  const host=$("communityGrid");if(!host)return;const items=communityFiltered();host.innerHTML="";renderCommunityTags();const mode=$("communitySort")?.value||"new";$("communitySummary").textContent=`${items.length} of ${communityPublic.length} public skin${communityPublic.length===1?"":"s"}${mode==="featured"&&items.length===0?" · no featured skins yet":""}`;
+  if(!items.length){const e=document.createElement("div");e.className="community-empty";e.textContent=mode==="featured"?"No featured community skins yet. Featured curation is prepared for the moderation pass.":"No community skins match these filters.";host.append(e);return;}items.forEach(x=>host.append(communityCard(x)));
+}
+async function refreshCommunity(silent=false){
+  if(communityBusy)return;communityBusy=true;if(!silent)$("communitySummary").textContent="Refreshing community catalogue…";
+  try{const d=await api("/api/community/public");communityPublic=Array.isArray(d.items)?d.items:[];renderCommunity();if(me&&bridgeOnline){communityOp("favorites").then(r=>{communityFavorites=new Set(Array.isArray(r.data?.ids)?r.data.ids:[]);renderCommunity();}).catch(()=>{});}if(!silent)toast("Community refreshed");}
+  catch(e){$("communitySummary").textContent=e.message;renderCommunity();if(!silent)toast(e.message);}finally{communityBusy=false;}
+}
+function openCommunityInStudio(item,applyNow=false){if(!item?.snapshot)return;activeCloudId="";pushHistory();restore(item.snapshot);$("skinName").value=item.title||`${communitySpeciesName(item.snapshot.species)} Community Skin`;setAppPage("studio",true);toast(applyNow?"Community skin loaded · sending Apply":"Community skin opened in Studio");if(applyNow)setTimeout(()=>applySkin(),120);}
+async function saveCommunityToLibrary(id){
+  if(!me){location.href=API+"/auth/steam";return;}if(!bridgeOnline)return toast("FOGGY server bridge is offline");
+  try{const r=await communityOp("save",{id});if(r.data?.item)upsertCommunityLocal(r.data.item);await refreshCloudLibrary(true);renderCommunity();toast(r.data?.duplicate?"That design is already in My Library":"Community skin saved to My Library");}catch(e){toast(e.message);}
+}
+async function toggleCommunityFavorite(id,favorite){
+  if(!me){location.href=API+"/auth/steam";return;}if(!bridgeOnline)return toast("FOGGY server bridge is offline");
+  try{const r=await communityOp("favorite",{id,favorite});favorite?communityFavorites.add(id):communityFavorites.delete(id);if(r.data?.item)upsertCommunityLocal(r.data.item);renderCommunity();toast(favorite?"Added to community favourites":"Removed from community favourites");}catch(e){toast(e.message);}
+}
+function upsertCommunityLocal(item){const i=communityPublic.findIndex(x=>x.id===item?.id);if(i>=0)communityPublic[i]={...communityPublic[i],...item};else if(item?.visibility==="public")communityPublic.push(item);}
+async function copyCommunityLink(id){const link=publishedLink(id);try{await navigator.clipboard.writeText(link);toast("Community link copied");}catch{prompt("Copy this link",link);}}
 
 
 const APPLY_STAGE_ORDER=["sending","queued","delivered","accepted","applied"];
@@ -697,7 +747,7 @@ async function applySkin(){
 }
 
 
-buildSpecies();buildColors();buildPresets();buildCloudFilters();refreshSaved();renderCloudLibrary();renderPublishedMine();renderApplyHistory();readAuthHash();renderAll();setAppPage(currentPageFromUrl(),false);refreshMe();refreshServerStatus();loadSharedPublicationFromUrl();
+buildSpecies();buildColors();buildPresets();buildCloudFilters();buildCommunitySpecies();refreshSaved();renderCloudLibrary();renderPublishedMine();renderApplyHistory();readAuthHash();renderAll();setAppPage(currentPageFromUrl(),false);refreshMe();refreshServerStatus();loadSharedPublicationFromUrl();refreshCommunity(true);
 setInterval(refreshServerStatus,10000);
 
 $("species").onchange=e=>{pushHistory();selected=SPECIES.find(s=>s.slug===e.target.value)||SPECIES[0];patternIndex=0;renderAll();};
@@ -724,6 +774,10 @@ $("exportCloudAll").onclick=exportCloudLibrary;
 $("importCloud").onclick=()=>$("cloudImportFile").click();
 $("cloudImportFile").onchange=async e=>{const f=e.target.files?.[0];e.target.value="";if(f)await importCloudFile(f);};
 document.querySelectorAll(".app-tabs [data-page]").forEach(b=>b.onclick=()=>setAppPage(b.dataset.page,true));
+$("communitySearch").addEventListener("input",renderCommunity);$("communitySpecies").onchange=renderCommunity;$("communitySort").onchange=renderCommunity;$("refreshCommunity").onclick=()=>refreshCommunity(false);
+$("communityFavoritesOnly").onclick=()=>{$("communityFavoritesOnly").classList.toggle("active");$("communityFavoritesOnly").textContent=$("communityFavoritesOnly").classList.contains("active")?"★ My favourites":"☆ My favourites";renderCommunity();};
+$("communityClear").onclick=()=>{$("communitySearch").value="";$("communitySpecies").value="";$("communitySort").value="new";$("communityFavoritesOnly").classList.remove("active");$("communityFavoritesOnly").textContent="☆ My favourites";communityTagFilter="";renderCommunity();};
+$("sharedCommunityPreview").onclick=()=>sharedPublicationItem&&openCommunityInStudio(sharedPublicationItem,false);$("sharedCommunityApply").onclick=()=>sharedPublicationItem&&openCommunityInStudio(sharedPublicationItem,true);$("sharedCommunitySave").onclick=()=>sharedPublicationItem&&saveCommunityToLibrary(sharedPublicationItem.id);
 $("publishSource").onchange=()=>renderPublishSourceMeta(true);
 $("publishedSkins").onchange=()=>renderPublishedDetails(true);
 $("refreshPublished").onclick=()=>refreshPublishedMine(false);
