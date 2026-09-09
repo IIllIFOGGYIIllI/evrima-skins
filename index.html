@@ -14,22 +14,6 @@
   }
 }
 </script>
-
-<style>
-/* v0.7.4 species intelligence */
-.species-intel{margin:-2px 0 12px;padding:11px 12px;border:1px solid #444536;background:linear-gradient(180deg,rgba(20,25,19,.96),rgba(10,14,10,.96));display:grid;gap:9px}
-.species-intel-main{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
-.species-intel-main strong{display:block;font-size:13px;margin-top:3px}
-.species-intel-main span:not(.chip-label){display:block;color:#9ca195;font-size:9px;margin-top:4px;line-height:1.45}
-.species-intel-badges{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
-.species-intel-actions{display:flex;gap:6px;flex-wrap:wrap}
-.species-intel-actions button{font-size:9px;padding:7px 9px}
-.species-intel-note{border-top:1px solid #34382f;padding-top:8px;color:#858c82;font-size:8px;line-height:1.5}
-.species-intel.flash{animation:foggyIntelFlash .45s ease}
-@keyframes foggyIntelFlash{0%{border-color:#d4b454;box-shadow:0 0 0 2px rgba(212,180,84,.16)}100%{border-color:#444536;box-shadow:none}}
-@media(max-width:700px){.species-intel-main{flex-direction:column}.species-intel-badges{justify-content:flex-start}}
-</style>
-
 </head>
 <body>
 <div class="shell">
@@ -42,7 +26,7 @@
   <div class="statuses">
     <span id="apiStatus" class="status warn">API checking…</span>
     <span id="serverStatus" class="status warn">Bridge checking…</span>
-    <span class="status">Web v0.7.4</span>
+    <span class="status">Web v0.8.0</span>
   </div>
 </header>
 
@@ -62,29 +46,6 @@
     <div class="species-row">
       <select id="species"></select>
       <button id="randomSpecies">Random species</button>
-    </div>
-
-    <div id="speciesIntel" class="species-intel">
-      <div class="species-intel-main">
-        <div>
-          <div class="kicker">SPECIES INTELLIGENCE</div>
-          <strong id="speciesIntelTitle">Tyrannosaurus · Forest earth</strong>
-          <span id="speciesIntelText">Suggested starting palette only — your live Evrima skin remains fully custom.</span>
-        </div>
-        <div class="species-intel-badges">
-          <span id="speciesPatternCount" class="chip-label">3 patterns</span>
-          <span class="chip-label model-exact">10 live colours</span>
-          <span class="chip-label model-exact">3 variations</span>
-        </div>
-      </div>
-      <div class="species-intel-actions">
-        <button id="useSpeciesBase">Use species base</button>
-        <button id="speciesNaturalize">Naturalize for species</button>
-      </div>
-      <div class="species-intel-note">
-        Changing species keeps your current colours. Pattern count is species-specific.
-        Preview placement is an approximation where an exact Evrima material map is unavailable.
-      </div>
     </div>
 
     <div id="viewerShell" class="viewer-shell scene-studio">
@@ -146,7 +107,7 @@
 
     <div class="preview-fidelity">
       <strong id="fidelityTitle">HQ 3D preview</strong>
-      <span id="fidelityText">Direct GLB rendering inside this page — no embedded third-party viewer, cookies or browser exceptions. Skin Map 3D remains the colour-accuracy view.</span>
+      <span id="fidelityText">Species-specific Evrima-style 3D preview foundation. HQ 3D uses the exact species model where available; Skin Map 3D remains the stronger colour-feedback view.</span>
     </div>
 
     <div class="apply-row">
@@ -206,7 +167,7 @@
         <span class="section-sub">All ten server-controlled CustomizerData regions</span>
       </div>
       <div class="quick-actions">
-        <button id="naturalize">Naturalize for Species</button>
+        <button id="naturalize">Naturalize</button>
         <button id="randomize">Randomize</button>
         <button id="resetSkin">Reset</button>
       </div>
@@ -242,13 +203,13 @@
 </main>
 
 <footer>
-  FOGGY Evrima PvE · real browser 3D preview where a compatible model is available · unsupported species fall back to the exact Evrima reference image
+  FOGGY Evrima PvE · species-specific browser 3D preview foundation · if a species model fails it falls back to the Evrima reference image
 </footer>
 </div>
 
 <div id="toast" class="toast"></div>
 <script src="./config.js"></script>
-<script type="module" src="./viewer3d.js?v=072"></script>
+<script type="module" src="./viewer3d.js?v=080"></script>
 <script src="./app.js?v=072"></script>
 </body>
 </html>

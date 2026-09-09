@@ -22,32 +22,7 @@ detail:"#49504A",breed:"#687A5A",eyes:"#D59B36",teeth:"#D8CFAC",
 mouth:"#6B3037",claws:"#333333"
 };
 
-const SPECIES_PROFILES={
-  tyrannosaurus:{family:"Forest earth",hue:82,sat:27,light:29,accent:28,eye:42,guidance:"Muted olive, umber and charcoal make a strong natural starting point for a large apex."},
-  allosaurus:{family:"Dry woodland",hue:34,sat:30,light:31,accent:18,eye:44,guidance:"Warm brown, ochre and darker dorsal contrast suit an earthy woodland-style morph."},
-  austroraptor:{family:"River slate",hue:194,sat:22,light:31,accent:28,eye:38,guidance:"Slate, muted teal and pale undersides create a restrained waterside palette."},
-  carnotaurus:{family:"Russet scrub",hue:18,sat:36,light:31,accent:5,eye:45,guidance:"Rust, clay and dark markings give a high-contrast but still grounded starting palette."},
-  ceratosaurus:{family:"Iron earth",hue:8,sat:31,light:29,accent:28,eye:38,guidance:"Iron red, brown-black and dusty flank tones fit a rugged natural morph."},
-  deinosuchus:{family:"Swamp",hue:96,sat:24,light:24,accent:45,eye:48,guidance:"Dark swamp greens, mud browns and subdued undersides work well around water."},
-  dilophosaurus:{family:"Ochre forest",hue:46,sat:34,light:31,accent:12,eye:52,guidance:"Ochre, bark brown and a stronger display accent make the crest/display areas stand out."},
-  herrerasaurus:{family:"Moss bark",hue:78,sat:27,light:28,accent:32,eye:45,guidance:"Mossy greens and bark-like markings make a compact forest camouflage base."},
-  omniraptor:{family:"Olive brush",hue:71,sat:28,light:30,accent:20,eye:44,guidance:"Olive, tan and dark striping give a flexible natural raptor-style palette."},
-  pteranodon:{family:"Coastal slate",hue:205,sat:20,light:37,accent:35,eye:42,guidance:"Cool slate, pale underbelly and restrained warm accents suit a coastal look."},
-  troodon:{family:"Dusk",hue:222,sat:20,light:25,accent:285,eye:52,guidance:"Dark slate and low-saturation blue-grey create a subtle nocturnal starting point."},
-  triceratops:{family:"Dust earth",hue:38,sat:28,light:37,accent:18,eye:42,guidance:"Dusty tan, warm brown and darker detail regions create a heavy terrestrial palette."},
-  stegosaurus:{family:"Fern",hue:108,sat:24,light:31,accent:32,eye:45,guidance:"Fern green and earthy plates or detail regions create a natural forest-oriented base."},
-  diabloceratops:{family:"Terracotta",hue:15,sat:34,light:34,accent:5,eye:45,guidance:"Terracotta, sand and deeper facial or detail tones suit a bold ceratopsian base."},
-  kentrosaurus:{family:"Olive thorn",hue:92,sat:25,light:31,accent:30,eye:45,guidance:"Olive body tones with darker detail regions keep the silhouette readable."},
-  tenontosaurus:{family:"Dry grass",hue:58,sat:27,light:35,accent:25,eye:43,guidance:"Dry grass, tan and muted olive make a versatile herbivore camouflage palette."},
-  maiasaura:{family:"Prairie earth",hue:31,sat:27,light:38,accent:18,eye:42,guidance:"Warm earth tones and softer flank contrast create a calm natural-looking base."},
-  pachycephalosaurus:{family:"Chestnut",hue:24,sat:32,light:34,accent:8,eye:46,guidance:"Chestnut, dark markings and a warmer detail accent make a compact high-contrast morph."},
-  dryosaurus:{family:"Leaf litter",hue:84,sat:25,light:35,accent:38,eye:46,guidance:"Leaf green, tan and darker markings suit a small forest-floor camouflage palette."},
-  hypsilophodon:{family:"Straw brush",hue:54,sat:30,light:41,accent:22,eye:48,guidance:"Straw, pale tan and modest markings make a light natural starter palette."},
-  gallimimus:{family:"Sandy plain",hue:41,sat:27,light:43,accent:20,eye:45,guidance:"Sand, cream and darker dorsal accents suit a fast open-ground look."},
-  beipiaosaurus:{family:"Marsh",hue:164,sat:20,light:34,accent:36,eye:45,guidance:"Muted marsh green, grey and pale underside tones make a restrained waterside morph."}
-};
-
-const HQ_AVAILABLE=new Set(["tyrannosaurus"]);
+const HQ_AVAILABLE=new Set(["tyrannosaurus", "allosaurus", "austroraptor", "carnotaurus", "ceratosaurus", "deinosuchus", "dilophosaurus", "herrerasaurus", "omniraptor", "pteranodon", "troodon", "triceratops", "stegosaurus", "diabloceratops", "kentrosaurus", "tenontosaurus", "maiasaura", "pachycephalosaurus", "dryosaurus", "hypsilophodon", "gallimimus", "beipiaosaurus"]);
 
 let colors={...DEFAULTS};
 let selected=SPECIES[0],patternIndex=0,skinVariation=1,themeIndex=0,previewSex="male";
@@ -83,63 +58,6 @@ function hsl(h,s,l){
   else if(h<300)[r,g,b]=[x,0,c];else[r,g,b]=[c,0,x];
   return rgbHex((r+m)*255,(g+m)*255,(b+m)*255);
 }
-function speciesProfile(species=selected){
-  return SPECIES_PROFILES[species?.slug]||{family:"Natural",hue:72,sat:25,light:33,accent:28,eye:44,guidance:"A balanced earth-tone starting palette."};
-}
-function speciesBasePalette(species=selected){
-  const p=speciesProfile(species),h=p.hue,s=p.sat,l=p.light;
-  const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
-  return{
-    body:hsl(h,clamp(s,8,55),clamp(l,18,58)),
-    markings:hsl((h+10)%360,clamp(s+12,10,65),clamp(l-14,8,48)),
-    flank:hsl((h+4)%360,clamp(s-3,8,52),clamp(l+8,22,65)),
-    underbelly:hsl((h+16)%360,clamp(s-11,6,40),clamp(l+27,45,78)),
-    detail:hsl((h+350)%360,clamp(s+10,10,66),clamp(l-8,10,50)),
-    breed:hsl(Number.isFinite(p.accent)?p.accent:(h+35)%360,48,44),
-    eyes:hsl(Number.isFinite(p.eye)?p.eye:44,78,52),
-    teeth:hsl(42,24,78),
-    mouth:hsl(350,46,27),
-    claws:hsl(h,9,14)
-  };
-}
-function naturalizeForSpecies(){
-  pushHistory();
-  const p=speciesProfile(),j=(Math.random()*24)-12,h=(p.hue+j+360)%360;
-  const sat=Math.max(12,Math.min(48,p.sat+(Math.random()*10-5)));
-  const light=Math.max(20,Math.min(48,p.light+(Math.random()*8-4)));
-  const eyeJ=(Math.random()*16)-8;
-  colors={
-    body:hsl(h,sat,light),
-    markings:hsl((h+8)%360,Math.min(62,sat+13),Math.max(9,light-15)),
-    flank:hsl((h+3)%360,Math.max(10,sat-4),Math.min(62,light+8)),
-    underbelly:hsl((h+15)%360,Math.max(7,sat-12),Math.min(76,light+26)),
-    detail:hsl((h+350)%360,Math.min(64,sat+10),Math.max(11,light-8)),
-    breed:hsl((p.accent+(Math.random()*12-6)+360)%360,46+Math.random()*12,42+Math.random()*8),
-    eyes:hsl((p.eye+eyeJ+360)%360,76,52),
-    teeth:hsl(42,24,78),mouth:hsl(350,46,27),claws:hsl(h,9,14)
-  };
-  renderAll();
-  toast(selected.name+" natural morph");
-}
-function useSpeciesBase(){
-  pushHistory();
-  colors=speciesBasePalette();
-  patternIndex=0;
-  skinVariation=1;
-  renderAll();
-  toast(selected.name+" species base");
-}
-function renderSpeciesIntel(){
-  const p=speciesProfile();
-  $("speciesIntelTitle").textContent=`${selected.name} · ${p.family}`;
-  $("speciesIntelText").textContent=p.guidance+" These are creator suggestions, not locked or official game colours.";
-  $("speciesPatternCount").textContent=`${selected.patterns} pattern${selected.patterns===1?"":"s"}`;
-}
-function flashSpeciesIntel(){
-  const el=$("speciesIntel");if(!el)return;
-  el.classList.remove("flash");void el.offsetWidth;el.classList.add("flash");
-}
-
 function snapshot(){
   return{colors:{...colors},species:selected.slug,patternIndex,skinVariation,themeIndex,previewSex};
 }
@@ -227,15 +145,15 @@ function renderPreviewMode(){
   const title=$("fidelityTitle"),text=$("fidelityText");
   if(previewMode==="hq"){
     title.textContent="HQ 3D preview";
-    text.textContent="Higher-detail direct GLB rendered by Three.js. Original textures are preserved where available and material colours are tinted live. No Sketchfab embed is used.";
+    text.textContent="Species-specific Evrima-style GLB preview. Original texture detail is preserved where available and your live colours are tinted over the exact species model.";
     $("viewerHint").textContent="Drag to rotate · wheel to zoom";
   }else if(previewMode==="skin3d"){
     title.textContent="Skin Map 3D preview";
-    text.textContent="Compatibility mesh for skin-design feedback. The selected colours and controls are real server inputs, but region placement can differ from Evrima where an exact material map is unavailable.";
+    text.textContent="Species-specific 3D colour preview. This mode uses the exact species mesh and applies all ten creator colours more aggressively for clearer design feedback.";
     $("viewerHint").textContent="Drag to rotate · wheel to zoom";
   }else{
     title.textContent="Skin 2D preview";
-    text.textContent="Fixed side-on compatibility preview. Colour inputs are exact; material placement remains an approximation where an exact Evrima map is unavailable.";
+    text.textContent="Fixed side-on render of the selected species so you can preview colours without moving the camera.";
     $("viewerHint").textContent="Fixed side-on skin preview";
   }
 }
@@ -243,7 +161,7 @@ function renderAll(){
   $("previewTitle").textContent=selected.name;$("viewerSpecies").textContent=selected.name;
   $("categoryBadge").textContent=selected.category;$("species").value=selected.slug;
   $("referenceImage").src=selected.image;$("referenceImage").alt=selected.name+" Evrima reference";
-  renderPatternButtons();renderSegmented();renderColors();renderPalette();renderPreviewMode();renderSpeciesIntel();emitViewer();
+  renderPatternButtons();renderSegmented();renderColors();renderPalette();renderPreviewMode();emitViewer();
 }
 function buildSpecies(){
   const groups={};
@@ -279,7 +197,19 @@ function buildPresets(){
     $("presets").append(b);
   });
 }
-function naturalize(){naturalizeForSpecies();}
+function naturalize(){
+  pushHistory();const h=Math.floor(Math.random()*360);
+  colors={
+    body:hsl(h,24+Math.random()*16,27+Math.random()*10),
+    markings:hsl((h+12)%360,34+Math.random()*18,13+Math.random()*10),
+    flank:hsl((h+5)%360,22+Math.random()*17,34+Math.random()*12),
+    underbelly:hsl((h+18)%360,15+Math.random()*12,53+Math.random()*12),
+    detail:hsl((h+345)%360,32+Math.random()*18,19+Math.random()*10),
+    breed:hsl((h+35)%360,36+Math.random()*24,38+Math.random()*13),
+    eyes:hsl(Math.floor(Math.random()*360),72,54),
+    teeth:hsl(42,24,78),mouth:hsl(350,46,27),claws:hsl((h+5)%360,9,15)
+  };renderAll();
+}
 function randomize(){
   pushHistory();const h=Math.floor(Math.random()*360),rnd=()=>Math.floor(Math.random()*360);
   colors={
@@ -403,7 +333,7 @@ function armViewerWatchdog(){
     loading.classList.add("hidden");
 
     if(message){
-      message.textContent="3D preview timed out. Showing the Evrima reference instead.";
+      message.textContent="3D preview timed out. Showing the Evrima reference for this species instead.";
       message.classList.add("show");
     }
     if(badge){
@@ -413,17 +343,16 @@ function armViewerWatchdog(){
   },12000);
 }
 
-buildSpecies();buildColors();buildPresets();refreshSaved();readAuthHash();colors=speciesBasePalette();renderAll();refreshMe();refreshServerStatus();
+buildSpecies();buildColors();buildPresets();refreshSaved();readAuthHash();renderAll();refreshMe();refreshServerStatus();
 armViewerWatchdog();
 setInterval(refreshServerStatus,10000);
 
-$("species").onchange=e=>{pushHistory();selected=SPECIES.find(s=>s.slug===e.target.value)||SPECIES[0];patternIndex=0;renderAll();flashSpeciesIntel();toast("Species changed · current colours retained");};
-$("randomSpecies").onclick=()=>{pushHistory();selected=SPECIES[Math.floor(Math.random()*SPECIES.length)];patternIndex=0;renderAll();flashSpeciesIntel();toast(selected.name+" selected · colours retained");};
+$("species").onchange=e=>{pushHistory();selected=SPECIES.find(s=>s.slug===e.target.value)||SPECIES[0];patternIndex=0;renderAll();};
+$("randomSpecies").onclick=()=>{pushHistory();selected=SPECIES[Math.floor(Math.random()*SPECIES.length)];patternIndex=0;renderAll();};
 document.querySelectorAll("#variationButtons button").forEach(b=>b.onclick=()=>{pushHistory();skinVariation=Number(b.dataset.value);renderAll();});
 document.querySelectorAll("#sexButtons button").forEach(b=>b.onclick=()=>{previewSex=b.dataset.value;renderAll();});
 $("naturalize").onclick=naturalize;$("randomize").onclick=randomize;
-$("useSpeciesBase").onclick=useSpeciesBase;$("speciesNaturalize").onclick=naturalizeForSpecies;
-$("resetSkin").onclick=()=>{pushHistory();colors=speciesBasePalette();patternIndex=0;skinVariation=1;themeIndex=0;renderAll();toast(selected.name+" reset to species base");};
+$("resetSkin").onclick=()=>{pushHistory();colors={...DEFAULTS};patternIndex=0;skinVariation=1;themeIndex=0;renderAll();toast("Skin reset");};
 $("saveSkin").onclick=saveSkin;$("loadSaved").onclick=loadSaved;
 $("deleteSaved").onclick=()=>{const n=$("savedSkins").value;if(!n)return;const d=savedDb();delete d[n];localStorage.setItem("foggy_skin_presets_v60",JSON.stringify(d));refreshSaved();toast("Skin deleted");};
 $("copyCode").onclick=async()=>{try{await navigator.clipboard.writeText(shareCode());toast("Share code copied");}catch{prompt("Copy this code",shareCode());}};

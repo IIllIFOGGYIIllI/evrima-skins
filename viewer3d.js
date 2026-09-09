@@ -9,30 +9,50 @@ const loading=document.getElementById("viewerLoading");
 const message=document.getElementById("viewerMessage");
 const shell=document.getElementById("viewerShell");
 
-const QUATERNIUS="https://cdn.jsdelivr.net/gh/Bleach4Ever/kid@main/public/models/";
-const HQ_TREX="https://raw.githubusercontent.com/code4fukui/glb-viewer/main/T-REX.glb";
+const EVRIMA_CDN="https://islepilot.eu/cdn/skinviewer/";
+const SOURCE_URL="https://github.com/toantranct/theisle-overlay";
+const MODEL_TIMEOUT_MS=18000;
 
-const SKIN_MODELS={
-  tyrannosaurus:{url:QUATERNIUS+"trex.glb",label:"SKIN MAP 3D · TYRANNOSAURUS"},
-  triceratops:{url:QUATERNIUS+"triceratops.glb",label:"SKIN MAP 3D · TRICERATOPS"},
-  stegosaurus:{url:QUATERNIUS+"stegosaurus.glb",label:"SKIN MAP 3D · STEGOSAURUS"},
-  omniraptor:{url:QUATERNIUS+"raptor.glb",label:"SKIN MAP 3D · RAPTOR REFERENCE",proxy:true},
-  austroraptor:{url:QUATERNIUS+"raptor.glb",label:"SKIN MAP 3D · RAPTOR REFERENCE",proxy:true}
-};
+function speciesModel(folder,file,label,framing={}){
+  return {
+    url:`${EVRIMA_CDN}${folder}/${file}`,
+    label,
+    source:"IslePilot / theisle-overlay Evrima viewer assets",
+    sourceUrl:SOURCE_URL,
+    exact:true,
+    framing
+  };
+}
 
-const HQ_MODELS={
-  tyrannosaurus:{
-    url:HQ_TREX,
-    label:"HQ 3D · TYRANNOSAURUS",
-    source:"code4fukui/glb-viewer · MIT",
-    sourceUrl:"https://github.com/code4fukui/glb-viewer"
-  }
+const EVRIMA_MODELS={
+  tyrannosaurus:speciesModel("Tyrannosaurus","Tyrannosaurus.glb","EVRIMA 3D · TYRANNOSAURUS",{lift:0.02,zoom:1.0}),
+  allosaurus:speciesModel("Allo","Allosaurus.glb","EVRIMA 3D · ALLOSAURUS",{lift:0.02,zoom:1.0}),
+  austroraptor:speciesModel("Austro","Austroraptor.glb","EVRIMA 3D · AUSTRORAPTOR",{lift:0.0,zoom:1.0}),
+  carnotaurus:speciesModel("Carno","Carnotaurus.glb","EVRIMA 3D · CARNOTAURUS",{lift:0.03,zoom:1.0}),
+  ceratosaurus:speciesModel("Cera","Ceratosaurus.glb","EVRIMA 3D · CERATOSAURUS",{lift:0.02,zoom:1.0}),
+  deinosuchus:speciesModel("Deino","Deinosuchus.glb","EVRIMA 3D · DEINOSUCHUS",{lift:-0.12,zoom:0.92}),
+  dilophosaurus:speciesModel("Dilo","Dilophosaurus.glb","EVRIMA 3D · DILOPHOSAURUS",{lift:0.04,zoom:1.02}),
+  herrerasaurus:speciesModel("Herrera","Herrerasaurus.glb","EVRIMA 3D · HERRERASAURUS",{lift:0.02,zoom:1.0}),
+  omniraptor:speciesModel("Omni","Omniraptor.glb","EVRIMA 3D · OMNIRAPTOR",{lift:0.02,zoom:1.02}),
+  pteranodon:speciesModel("Pter","Pteranodon.glb","EVRIMA 3D · PTERANODON",{lift:0.06,zoom:1.08}),
+  troodon:speciesModel("Troodon","Troodon.glb","EVRIMA 3D · TROODON",{lift:0.04,zoom:1.04}),
+  triceratops:speciesModel("Triceratops","Triceratops.glb","EVRIMA 3D · TRICERATOPS",{lift:0.01,zoom:0.98}),
+  stegosaurus:speciesModel("Stego","Stegosaurus.glb","EVRIMA 3D · STEGOSAURUS",{lift:0.02,zoom:0.98}),
+  diabloceratops:speciesModel("Dibble","Diabloceratops.glb","EVRIMA 3D · DIABLOCERATOPS",{lift:0.02,zoom:1.0}),
+  kentrosaurus:speciesModel("Kentro","Kentrosaurus.glb","EVRIMA 3D · KENTROSAURUS",{lift:0.02,zoom:1.0}),
+  tenontosaurus:speciesModel("Teno","Tenontosaurus.glb","EVRIMA 3D · TENONTOSAURUS",{lift:0.02,zoom:0.98}),
+  maiasaura:speciesModel("Maiasaura","Maiasaura.glb","EVRIMA 3D · MAIASAURA",{lift:0.02,zoom:0.96}),
+  pachycephalosaurus:speciesModel("Pachy","Pachycephalosaurus.glb","EVRIMA 3D · PACHYCEPHALOSAURUS",{lift:0.04,zoom:1.04}),
+  dryosaurus:speciesModel("Dryo","Dryosaurus.glb","EVRIMA 3D · DRYOSAURUS",{lift:0.05,zoom:1.08}),
+  hypsilophodon:speciesModel("Hypsi","Hypsilophodon.glb","EVRIMA 3D · HYPSILOPHODON",{lift:0.06,zoom:1.08}),
+  gallimimus:speciesModel("Galli","Gallimimus.glb","EVRIMA 3D · GALLIMIMUS",{lift:0.03,zoom:1.02}),
+  beipiaosaurus:speciesModel("Beipi","Beipiaosaurus.glb","EVRIMA 3D · BEIPIAOSAURUS",{lift:0.03,zoom:1.02})
 };
 
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,powerPreference:"high-performance"});
 renderer.outputColorSpace=THREE.SRGBColorSpace;
 renderer.toneMapping=THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure=1.12;
+renderer.toneMappingExposure=1.1;
 renderer.shadowMap.enabled=true;
 renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
@@ -63,7 +83,7 @@ let root=null,mixer=null,currentKey="";
 let state=window.FOGGY_VIEWER_STATE||null;
 let settings=window.FOGGY_VIEWER_SETTINGS||{scene:"studio",background:true,brightness:.82,lighting:.9,idle:true};
 let mode="skin3d";
-let meshRecords=[],headBone=null;
+let meshRecords=[],headBone=null,currentInfo=null;
 let modelBox=new THREE.Box3(),modelSize=new THREE.Vector3(),modelCenter=new THREE.Vector3();
 let longAxis="x",widthAxis="z";
 const temp=new THREE.Vector3(),headWorld=new THREE.Vector3();
@@ -98,7 +118,7 @@ function disposeRoot(){
     }
     if(o.geometry?.userData?.foggyClone)o.geometry.dispose();
   });
-  root=null;mixer=null;meshRecords=[];headBone=null;
+  root=null;mixer=null;meshRecords=[];headBone=null;currentInfo=null;
 }
 function findHead(object){
   let found=null;
@@ -127,8 +147,8 @@ function cloneMaterial(m,preserveTexture){
   c.userData.baseColor=(c.color?.clone?.()||new THREE.Color(0xffffff));
   c.vertexColors=!preserveTexture;
   c.transparent=false;c.opacity=1;c.depthWrite=true;c.side=THREE.FrontSide;
-  if("metalness" in c)c.metalness=Math.min(.12,c.metalness??0);
-  if("roughness" in c)c.roughness=Math.max(.48,c.roughness??.74);
+  if("metalness" in c)c.metalness=Math.min(.14,c.metalness??0);
+  if("roughness" in c)c.roughness=Math.max(.46,c.roughness??.74);
   if(!preserveTexture){
     if(c.color)c.color.set(0xffffff);
     if("map" in c)c.map=null;
@@ -157,10 +177,12 @@ function fitModel(){
   root.updateMatrixWorld(true);
   modelBox.setFromObject(root);modelBox.getSize(modelSize);
   const maxDim=Math.max(modelSize.x,modelSize.y,modelSize.z)||1;
-  root.scale.setScalar(6.45/maxDim);
+  const fit=(currentInfo?.framing?.zoom||1)*6.45;
+  root.scale.setScalar(fit/maxDim);
   root.updateMatrixWorld(true);
   modelBox.setFromObject(root);modelBox.getCenter(modelCenter);
   root.position.x-=modelCenter.x;root.position.z-=modelCenter.z;root.position.y-=modelBox.min.y;
+  root.position.y+=Math.max(-0.4,Math.min(0.6,(currentInfo?.framing?.lift||0)*modelSize.y));
   root.updateMatrixWorld(true);
   modelBox.setFromObject(root);modelBox.getSize(modelSize);modelBox.getCenter(modelCenter);
   longAxis=modelSize.x>=modelSize.z?"x":"z";widthAxis=longAxis==="x"?"z":"x";
@@ -202,7 +224,7 @@ function tintHQ(){
   const c=state.colors||{};
   const composite=()=>{
     let x=new THREE.Color(c.body||"#6D706B");
-    x.lerp(new THREE.Color(c.flank||"#7C8179"),.12);
+    x.lerp(new THREE.Color(c.flank||"#7C8179"),.14);
     x.lerp(new THREE.Color(c.underbelly||"#A5A49A"),.07);
     x.lerp(new THREE.Color(c.markings||"#343A35"),.08);
     return x;
@@ -212,9 +234,8 @@ function tintHQ(){
     const mats=Array.isArray(rec.mesh.material)?rec.mesh.material:[rec.mesh.material];
     mats.forEach(m=>{
       if(!m?.color)return;
-      // Preserve the source texture. Base colour is multiplied by the selected tint.
       const base=m.userData.baseColor?.clone?.()||new THREE.Color(1,1,1);
-      const strength=rec.cls==="body"?.72:.88;
+      const strength=rec.cls==="body"?.78:.9;
       const target=base.clone().multiply(tint);
       m.color.copy(base).lerp(target,strength);m.needsUpdate=true;
     });
@@ -267,35 +288,15 @@ function setCamera(nextMode){
   }
   camera.updateProjectionMatrix();controls.update();
 }
-const MODEL_TIMEOUT_MS=10000;
 function loadGLTF(url){
   if(cache.has(url))return cache.get(url);
-
   const p=new Promise((resolve,reject)=>{
     let settled=false;
-    const finish=(fn,value)=>{
-      if(settled)return;
-      settled=true;
-      clearTimeout(timer);
-      fn(value);
-    };
-    const timer=setTimeout(()=>{
-      cache.delete(url);
-      finish(reject,new Error("3D model load timed out"));
-    },MODEL_TIMEOUT_MS);
-
-    loader.load(
-      url,
-      gltf=>finish(resolve,gltf),
-      undefined,
-      err=>{
-        cache.delete(url);
-        finish(reject,err);
-      }
-    );
+    const finish=(fn,value)=>{if(settled)return;settled=true;clearTimeout(timer);fn(value);};
+    const timer=setTimeout(()=>{cache.delete(url);finish(reject,new Error("3D model load timed out"));},MODEL_TIMEOUT_MS);
+    loader.load(url,gltf=>finish(resolve,gltf),undefined,err=>{cache.delete(url);finish(reject,err);});
   });
-  cache.set(url,p);
-  return p;
+  cache.set(url,p);return p;
 }
 async function loadCurrent(){
   if(!state)return;
@@ -303,18 +304,11 @@ async function loadCurrent(){
   mode=state.mode==="hq"?"hq":state.mode==="2d"?"2d":"skin3d";
   fallback.src=state.fallbackImage||state.species?.image||"";
 
-  let info=mode==="hq"?HQ_MODELS[slug]:SKIN_MODELS[slug];
-  if(mode==="2d")info=SKIN_MODELS[slug];
-
-  if(!info&&mode==="hq"){
-    info=SKIN_MODELS[slug];mode="skin3d";
-    showMessage("HQ 3D is not available for this species yet. Showing Skin Map 3D instead.");
-    emitStatus("fallback","SKIN MAP 3D · HQ PENDING");
-  }
+  let info=EVRIMA_MODELS[slug];
   if(!info){
     disposeRoot();canvas.style.display="none";fallback.style.display="block";showLoading(false);
-    showMessage("No licensed 3D model is configured for this species yet. Showing the Evrima reference.");
-    emitStatus("fallback","EVRIMA REFERENCE · 3D PENDING");clearSource();return;
+    showMessage("No species model is configured for this dinosaur yet. Showing the Evrima reference.");
+    emitStatus("fallback","EVRIMA REFERENCE · MODEL PENDING");clearSource();return;
   }
 
   const keyId=mode+"|"+slug+"|"+info.url;
@@ -322,26 +316,21 @@ async function loadCurrent(){
     canvas.style.display="block";fallback.style.display="none";updateColours();setCamera(mode);return;
   }
 
-  currentKey=keyId;disposeRoot();clearSource();
+  currentKey=keyId;disposeRoot();clearSource();currentInfo=info;
   canvas.style.display="block";fallback.style.display="none";
-  showLoading(true,"Loading "+(state.species?.name||slug)+" "+(mode==="hq"?"HQ 3D":"skin preview")+"…");
-  emitStatus("loading","LOADING 3D…");
+  showLoading(true,`Loading ${(state.species?.name||slug)} ${mode==="hq"?"HQ 3D":"preview"}…`);
+  emitStatus("loading","LOADING EVRIMA 3D…");
 
   try{
     const gltf=await loadGLTF(info.url);
     root=skeletonClone(gltf.scene);root.name="FOGGY_DinosaurPreview";scene.add(root);
     headBone=findHead(root);prepareMeshes(mode==="hq");fitModel();root.updateMatrixWorld(true);
     updateColours();startAnimation(gltf);setCamera(mode);showLoading(false);showMessage("");showSource(info);
-    emitStatus(info.proxy?"proxy":"exact",info.label);
+    emitStatus("exact",mode==="hq"?info.label:info.label.replace("EVRIMA 3D","SKIN MAP 3D"));
   }catch(err){
     console.error("[FOGGY Preview]",err);
-    if(mode==="hq"&&SKIN_MODELS[slug]){
-      mode="skin3d";currentKey="";
-      showMessage("HQ model could not load, so Skin Map 3D was loaded automatically.");
-      await loadCurrent();return;
-    }
     disposeRoot();canvas.style.display="none";fallback.style.display="block";showLoading(false);
-    showMessage("3D model failed to load. Showing the Evrima reference.");
+    showMessage("3D model failed to load. Showing the Evrima reference for this species.");
     emitStatus("error","3D LOAD FAILED · REFERENCE SHOWN");
   }
 }
