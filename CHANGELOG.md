@@ -1,3 +1,15 @@
+## Web v0.10.0 / API v0.8.0 / Bridge v0.8.0 — Publishing Foundation
+
+- Splits the site into Studio, My Library and Publish top-level pages.
+- Publishes immutable snapshots from Steam-library skins; private edits never silently alter published copies.
+- Supports Public and Unlisted links, explicit snapshot updates, unpublish and delete.
+- Caps active publications at 20 per Steam account.
+- Stores the durable catalogue in a separate atomic `SkinWebCommunity.json` file.
+- Railway maintains only a sanitized runtime cache synchronized by the bridge.
+- Public cache data excludes SteamID and private library IDs.
+- Adds owner-only publishing controls and authenticated ownership checks through the existing Steam session.
+- Preserves Web v0.9.3 advanced library, v0.9.2 multiplayer hardening, Apply status, preview pipeline and UE4SS v0.6.2.
+
 ## Web v0.9.3 / API v0.7.3 / Bridge v0.7.2 — Advanced Library, Tags & Import/Export
 
 - Adds cloud-library search across skin name, species and user tags.

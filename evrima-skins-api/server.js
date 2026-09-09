@@ -11,7 +11,8 @@ const SERVER_ID=String(process.env.SERVER_ID||"foggy-evrima-pve");
 const FIELDS=["body","markings","flank","underbelly","detail","eyes","breed","teeth","mouth","claws"];
 const commands=new Map(),order=[];
 const libraryCommands=new Map(),libraryOrder=[];
-const rate=new Map(),steamApplyRate=new Map(),libraryRate=new Map(),steamLibraryRate=new Map();
+const communityCache=new Map();let communityRevision=0,communityCacheAt=0;
+const rate=new Map(),steamApplyRate=new Map(),libraryRate=new Map(),steamLibraryRate=new Map(),communityRate=new Map(),steamCommunityRate=new Map();
 let lastHeartbeat=0;
 
 function send(res,status,obj,headers={}){
@@ -38,6 +39,20 @@ function cleanTags(raw){
   return out;
 }
 function cleanVisibility(v){v=String(v||"private").toLowerCase();return["private","unlisted","public"].includes(v)?v:"private"}
+function cleanPublishVisibility(v){v=String(v||"").toLowerCase();return["public","unlisted"].includes(v)?v:null}
+function cleanDescription(v){return String(v||"").replace(/[\r\t]/g," ").replace(/\n{3,}/g,"\n\n").trim().slice(0,240)}
+function normalizeCommunitySnapshot(raw){
+  raw=raw&&typeof raw==="object"?raw:{};const species=String(raw.species||"").toLowerCase(),count=SPECIES_PATTERNS[species];if(!count)return null;
+  const patternIndex=Number(raw.patternIndex),skinVariation=Number(raw.skinVariation);if(!Number.isInteger(patternIndex)||patternIndex<0||patternIndex>=count||!Number.isInteger(skinVariation)||skinVariation<0||skinVariation>2)return null;
+  const colors={};for(const f of FIELDS){const h=cleanHex(raw.colors&&raw.colors[f]);if(!h)return null;colors[f]=h}
+  return{species,patternIndex,skinVariation,themeIndex:0,previewSex:raw.previewSex==="female"?"female":"male",colors,tags:cleanTags(raw.tags)};
+}
+function normalizeCommunityItem(raw){
+  raw=raw&&typeof raw==="object"?raw:{};const id=cleanUuid(raw.id),title=cleanName(raw.title),visibility=cleanPublishVisibility(raw.visibility),snapshot=normalizeCommunitySnapshot(raw.snapshot);if(!id||!title||!visibility||!snapshot)return null;
+  return{id,title,description:cleanDescription(raw.description),visibility,snapshotVersion:Math.max(1,Math.floor(Number(raw.snapshotVersion)||1)),snapshot,publishedAt:Math.max(0,Number(raw.publishedAt)||0),updatedAt:Math.max(0,Number(raw.updatedAt)||0)};
+}
+function replaceCommunityCache(items,revision=0){communityCache.clear();for(const raw of Array.isArray(items)?items:[]){const x=normalizeCommunityItem(raw);if(x)communityCache.set(x.id,x)}communityRevision=Math.max(0,Number(revision)||0);communityCacheAt=Date.now()}
+function upsertCommunityCache(raw){const x=normalizeCommunityItem(raw);if(x){communityCache.set(x.id,x);communityCacheAt=Date.now()}return x}
 function normalizeLibrarySkin(raw){
   raw=raw&&typeof raw==="object"?raw:{};
   const species=String(raw.species||"").toLowerCase(),count=SPECIES_PATTERNS[species];
@@ -76,6 +91,8 @@ function allowRate(ip){return allowBucket(rate,ip,30)}
 function allowSteamApply(steam){return allowBucket(steamApplyRate,steam,8)}
 function allowLibraryRate(ip){return allowBucket(libraryRate,ip,60)}
 function allowSteamLibrary(steam){return allowBucket(steamLibraryRate,steam,40)}
+function allowCommunityRate(ip){return allowBucket(communityRate,ip,30)}
+function allowSteamCommunity(steam){return allowBucket(steamCommunityRate,steam,12)}
 function openidUrl(){const ret=PUBLIC_BASE_URL+"/auth/steam/callback",p=new URLSearchParams({"openid.ns":"http://specs.openid.net/auth/2.0","openid.mode":"checkid_setup","openid.return_to":ret,"openid.realm":PUBLIC_BASE_URL,"openid.identity":"http://specs.openid.net/auth/2.0/identifier_select","openid.claimed_id":"http://specs.openid.net/auth/2.0/identifier_select"});return"https://steamcommunity.com/openid/login?"+p}
 async function verifySteam(url){const p=new URLSearchParams(url.searchParams);p.set("openid.mode","check_authentication");const r=await fetch("https://steamcommunity.com/openid/login",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:p.toString()});const txt=await r.text();if(!/is_valid\s*:\s*true/i.test(txt))return null;const claimed=url.searchParams.get("openid.claimed_id")||"",m=claimed.match(/\/id\/(\d{17})$/);return m?m[1]:null}
 
@@ -246,7 +263,7 @@ const app=http.createServer(async(req,res)=>{
   cors(req,res);if(req.method==="OPTIONS"){res.writeHead(204);return res.end()}
   const url=new URL(req.url,PUBLIC_BASE_URL||`http://${req.headers.host||"localhost"}`);
   try{
-    if(req.method==="GET"&&url.pathname==="/health")return send(res,200,{ok:true,service:"FOGGY Evrima Skin API",version:"0.7.3"});
+    if(req.method==="GET"&&url.pathname==="/health")return send(res,200,{ok:true,service:"FOGGY Evrima Skin API",version:"0.8.0"});
     if(req.method==="GET"&&url.pathname==="/auth/steam"){if(!PUBLIC_BASE_URL||!SESSION_SECRET)return send(res,503,{error:"Steam auth is not configured"});res.writeHead(302,{Location:openidUrl(),"Cache-Control":"no-store"});return res.end()}
     if(req.method==="GET"&&url.pathname==="/auth/steam/callback"){const steam=await verifySteam(url);if(!steam){res.writeHead(302,{Location:FRONTEND_URL+"#auth=failed"});return res.end()}res.writeHead(302,{Location:FRONTEND_URL+"#session="+encodeURIComponent(signSession(steam)),"Cache-Control":"no-store"});return res.end()}
     if(req.method==="GET"&&url.pathname==="/api/me"){const u=user(req);if(!u)return send(res,401,{error:"Steam sign-in required"});return send(res,200,{steam:u.steam})}
@@ -283,6 +300,23 @@ const app=http.createServer(async(req,res)=>{
       const u=user(req);if(!u)return send(res,401,{error:"Steam sign-in required"});prune();
       const requests=[];for(let i=order.length-1;i>=0&&requests.length<8;i--){const c=commands.get(order[i]);if(c&&c.steam===u.steam)requests.push(skinStatusPayload(c))}
       return send(res,200,{requests});
+    }
+
+    if(req.method==="GET"&&url.pathname==="/api/community/public"){
+      const items=[...communityCache.values()].filter(x=>x.visibility==="public").sort((a,b)=>b.updatedAt-a.updatedAt).slice(0,100);return send(res,200,{items,updatedAt:communityCacheAt,bridgeOnline:bridgeIsOnline()});
+    }
+    const communityItemMatch=url.pathname.match(/^\/api\/community\/item\/([0-9a-f-]+)$/i);
+    if(req.method==="GET"&&communityItemMatch){const id=cleanUuid(communityItemMatch[1]);if(!id)return send(res,400,{error:"Invalid published skin ID"});const item=communityCache.get(id);if(!item)return send(res,404,{error:"Published skin not found or no longer shared"});return send(res,200,{item,updatedAt:communityCacheAt,bridgeOnline:bridgeIsOnline()})}
+    if(req.method==="POST"&&url.pathname==="/api/community/op"){
+      const u=user(req);if(!u)return send(res,401,{error:"Steam sign-in required"});if(!bridgeIsOnline())return send(res,503,{error:"FOGGY server bridge is offline or restarting"});
+      if(!allowCommunityRate(req.socket.remoteAddress||"unknown")||!allowSteamCommunity(u.steam))return send(res,429,{error:"Too many publishing requests. Try again in a minute."});
+      const b=await readBody(req),action=String(b.action||"").toLowerCase(),payload={};
+      if(action==="mine"){}
+      else if(action==="publish"){payload.sourceSkinId=cleanUuid(b.sourceSkinId);payload.title=cleanName(b.title);payload.description=cleanDescription(b.description);payload.visibility=cleanPublishVisibility(b.visibility);if(!payload.sourceSkinId||!payload.title||!payload.visibility)return send(res,400,{error:"Invalid publish request"});}
+      else if(action==="update"){payload.id=cleanUuid(b.id);payload.title=cleanName(b.title);payload.description=cleanDescription(b.description);payload.visibility=cleanPublishVisibility(b.visibility);if(!payload.id||!payload.title||!payload.visibility)return send(res,400,{error:"Invalid published skin update"});}
+      else if(action==="unpublish"||action==="delete"){payload.id=cleanUuid(b.id);if(!payload.id)return send(res,400,{error:"Invalid published skin ID"});}
+      else return send(res,400,{error:"Unsupported publishing action"});
+      const c=queueLibraryCommand(u.steam,"community-"+action,payload,true);return send(res,202,{ok:true,id:c.id,status:c.status});
     }
 
     if(req.method==="POST"&&url.pathname==="/api/library/op"){
@@ -344,10 +378,11 @@ const app=http.createServer(async(req,res)=>{
       if(String(b.steam||"")!==c.steam)return send(res,409,{error:"Steam ownership mismatch"});
       if(!["delivered","queued"].includes(c.status))return send(res,200,{ok:true,ignored:true,status:c.status});
       c.status=b.ok?"completed":"failed";c.message=String(b.message||(b.ok?"Library updated":"Library operation failed")).slice(0,300);c.data=b.ok&&b.data!==undefined?b.data:null;
+      if(b.ok&&c.action.startsWith("community-")){if((c.action==="community-publish"||c.action==="community-update")&&c.data&&c.data.item)upsertCommunityCache(c.data.item);if((c.action==="community-unpublish"||c.action==="community-delete")&&c.data&&c.data.id)communityCache.delete(String(c.data.id));communityCacheAt=Date.now()}
       return send(res,200,{ok:true,status:c.status})
     }
     if(req.method==="POST"&&url.pathname==="/api/server/heartbeat"){
-      if(!serverAuth(req))return send(res,401,{error:"Invalid server bridge token"});const b=await readBody(req);if(!requireServerBody(b))return send(res,409,{error:"Server ID mismatch"});lastHeartbeat=Date.now();return send(res,200,{ok:true,server:SERVER_ID})
+      if(!serverAuth(req))return send(res,401,{error:"Invalid server bridge token"});const b=await readBody(req,512*1024);if(!requireServerBody(b))return send(res,409,{error:"Server ID mismatch"});lastHeartbeat=Date.now();if(Array.isArray(b.communityItems))replaceCommunityCache(b.communityItems,b.communityRevision);return send(res,200,{ok:true,server:SERVER_ID,communityRevision})
     }
     return send(res,404,{error:"Not found"})
   }catch(e){console.error("[FOGGY API]",e);return send(res,500,{error:"Internal server error"})}

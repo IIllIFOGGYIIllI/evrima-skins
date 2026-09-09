@@ -1,11 +1,12 @@
-<!doctype html>
+<!DOCTYPE html>
+
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#0b0e0a">
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
+<meta content="#0b0e0a" name="theme-color"/>
 <title>FOGGY Evrima Skin Studio</title>
-<link rel="stylesheet" href="./styles.css">
+<link href="./styles.css" rel="stylesheet"/>
 <script type="importmap">
 {
   "imports": {
@@ -14,7 +15,6 @@
   }
 }
 </script>
-
 <style>
 /* v0.9.1 Steam cloud library + live Apply status */
 .cloud-library{border-color:#5b5736;background:linear-gradient(180deg,rgba(25,27,18,.74),rgba(10,14,10,.5))}
@@ -67,278 +67,311 @@
   .cloud-io{grid-template-columns:1fr}
 }
 
+
+/* v0.10.0 application pages + publishing */
+.app-tabs{display:flex;gap:6px;align-items:center;margin:10px 0 16px;padding:7px;border:1px solid #2e342b;background:rgba(8,12,8,.72);position:sticky;top:8px;z-index:40;backdrop-filter:blur(12px)}
+.app-tabs button{min-width:110px}.app-tabs button.active{border-color:#8b7842;color:#ead78b;background:rgba(128,105,37,.22)}
+.app-tabs-spacer{flex:1}.app-tab-note{font-size:8px;color:#7d857a;letter-spacing:.05em;text-transform:uppercase;padding-right:6px}
+.app-page{display:none}.app-page.active{display:block}.page-shell{display:grid;gap:14px}.page-heading{border:1px solid #34382f;background:rgba(10,14,10,.62);padding:16px}.page-heading h2{margin:3px 0 5px;font-size:24px}.page-heading p{margin:0;color:#979e94;font-size:10px;line-height:1.5}
+.library-page-grid,.publish-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(300px,.8fr);gap:14px;align-items:start}.page-column{display:grid;gap:14px}.page-column>.saved-area,.page-column>details{margin-top:0}
+.publish-card{padding:16px}.publish-grid .shared-publication{grid-column:1/-1}.field-stack{display:grid;gap:5px;margin:9px 0}.field-stack>span{font-size:8px;color:#858d82;text-transform:uppercase;letter-spacing:.08em}.field-stack input,.field-stack select,.field-stack textarea{width:100%;box-sizing:border-box}.field-stack textarea{resize:vertical;min-height:82px}
+.publish-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:10px}.publish-actions.four{grid-template-columns:repeat(4,minmax(0,1fr))}.publish-source-meta,.published-details{border:1px solid #343a31;background:rgba(8,12,8,.54);padding:9px;font-size:9px;line-height:1.55;color:#9da59a;margin-top:9px;white-space:pre-line}.published-details strong{color:#d6d9d2}.shared-publication h3{margin:2px 0 7px}.shared-publication p{color:#a0a79d;line-height:1.55}.publishing-good{color:#a9c985}.publishing-warn{color:#d5b866}.publishing-bad{color:#d58072}
+@media(max-width:850px){.library-page-grid,.publish-grid{grid-template-columns:1fr}.publish-grid .shared-publication{grid-column:auto}.app-tabs{overflow-x:auto}.app-tabs button{min-width:95px}.app-tab-note{display:none}.publish-actions.four{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
 </head>
 <body>
 <div class="shell">
 <header class="topbar">
-  <div>
-    <div class="eyebrow">FOGGY EVRIMA PvE</div>
-    <h1>SKIN <span>CREATOR</span></h1>
-    <p>Build a skin visually, save it, then apply it directly to your live dinosaur.</p>
-  </div>
-  <div class="statuses">
-    <span id="apiStatus" class="status warn">API checking…</span>
-    <span id="serverStatus" class="status warn">Bridge checking…</span>
-    <span class="status">Web v0.9.3</span>
-  </div>
-</header>
+<div>
+<div class="eyebrow">FOGGY EVRIMA PvE</div>
+<h1>SKIN <span>CREATOR</span></h1>
+<p>Build a skin visually, save it, then apply it directly to your live dinosaur.</p>
+</div>
+<div class="statuses">
+<span class="status warn" id="apiStatus">API checking…</span>
+<span class="status warn" id="serverStatus">Bridge checking…</span>
+<span class="status">Web v0.10.0</span>
+</div>
+</header><nav aria-label="Skin Studio sections" class="app-tabs">
+<button class="active" data-page="studio" type="button">Studio</button>
+<button data-page="library" type="button">My Library</button>
+<button data-page="publishing" type="button">Publish</button>
+<span class="app-tabs-spacer"></span>
+<span class="app-tab-note">Community browsing arrives next</span>
+</nav>
+<section class="app-page active" data-app-page="studio" id="page-studio"><main class="creator">
+<section class="preview-panel panel">
+<div class="panel-head">
+<div>
+<div class="kicker">DINOSAUR PREVIEW</div>
+<h2 id="previewTitle">Tyrannosaurus</h2>
+</div>
+<div class="preview-meta">
+<span class="chip-label" id="categoryBadge">Apex Carnivore</span>
+<span class="chip-label model-loading" id="modelBadge">Loading 3D…</span>
+</div>
+</div>
+<div class="species-row">
+<select id="species"></select>
+<button id="randomSpecies">Random species</button>
+</div>
+<div class="viewer-shell scene-studio" id="viewerShell">
+<canvas aria-label="Interactive dinosaur skin preview" id="viewer3d"></canvas>
+<img alt="Evrima species reference" class="fallback-image" id="fallbackImage"/>
+<div class="reference-card" id="referenceCard">
+<span>EVRIMA REFERENCE</span>
+<img alt="Selected Evrima species reference" id="referenceImage"/>
+</div>
+<div class="viewer-loading" id="viewerLoading">
+<div class="spinner"></div>
+<span>Loading dinosaur model…</span>
+</div>
+<div class="viewer-message" id="viewerMessage"></div>
+<div class="viewer-topline">
+<span id="viewerSpecies">Tyrannosaurus</span>
+<div class="viewer-actions">
+<div class="preview-mode-tabs" id="previewModeTabs">
+<button class="tiny" data-preview-mode="hq">EVRIMA 3D</button>
+<button class="tiny active" data-preview-mode="skin3d">COLOUR 3D</button>
+<button class="tiny" data-preview-mode="2d">SIDE VIEW</button>
+</div>
+<button class="tiny" id="resetCamera">Reset camera</button>
+</div>
+</div>
+<div class="scene-controls">
+<div class="scene-title">SCENE</div>
+<label class="switch-row">
+<span>Background</span>
+<input checked="" id="backgroundEnabled" type="checkbox"/>
+</label>
+<label>
+<span>Scene</span>
+<select id="sceneSelect">
+<option value="jungle">Jungle ambience</option>
+<option value="lagoon">Lagoon</option>
+<option selected="" value="studio">Dark studio</option>
+<option value="night">Night forest</option>
+</select>
+</label>
+<label>
+<span>Backdrop brightness <b id="brightnessValue">82%</b></span>
+<input id="backdropBrightness" max="125" min="30" type="range" value="82"/>
+</label>
+<label>
+<span>Lighting <b id="lightingValue">90%</b></span>
+<input id="lighting" max="140" min="35" type="range" value="90"/>
+</label>
+<label class="switch-row">
+<span>Idle animation</span>
+<input checked="" id="idleEnabled" type="checkbox"/>
+</label>
+</div>
+<div class="viewer-hint" id="viewerHint">Drag to rotate · wheel to zoom</div>
+<div class="palette-bar" id="paletteBar"></div>
+</div>
+<div class="preview-fidelity">
+<strong id="fidelityTitle">HQ 3D preview</strong>
+<span id="fidelityText">Researched Evrima-source preview: verified species GLB + source pattern, RAC and normal-map compositing through the Railway asset proxy.</span>
+</div>
+<div class="apply-row">
+<button class="primary" id="apply">APPLY TO MY DINOSAUR</button>
+<button id="saveSkin">SAVE SKIN</button>
+</div>
+<div class="result" id="result"></div>
+<div class="apply-live" id="applyLive">
+<div class="apply-live-head">
+<strong id="applyLiveTitle">Apply status</strong>
+<span id="applyLiveTime"></span>
+</div>
+<div class="apply-steps" id="applySteps">
+<div class="apply-step" data-stage="sending">Sending</div>
+<div class="apply-step" data-stage="queued">Railway</div>
+<div class="apply-step" data-stage="delivered">Bridge</div>
+<div class="apply-step" data-stage="accepted">UE4SS</div>
+<div class="apply-step" data-stage="applied">Applied</div>
+</div>
+<div class="apply-live-note" id="applyLiveNote">No Apply request yet.</div>
+<div class="apply-history">
+<div class="apply-history-head">
+<strong>Recent Apply requests</strong>
+<button id="refreshApplyHistory" type="button">Refresh</button>
+</div>
+<div class="apply-history-list" id="applyHistoryList"></div>
+</div>
+</div>
+<div class="account-card">
+<div>
+<strong id="accountTitle">Steam not linked</strong>
+<span id="accountDetail">Sign in once. No client files or commands are required.</span>
+</div>
+<button id="steamButton">Sign in with Steam</button>
+</div>
+</section>
+<section class="editor-panel panel">
+<div class="editor-head">
+<div>
+<div class="kicker">MY CUSTOM SKIN</div>
+<input class="skin-name" id="skinName" maxlength="32" placeholder="Untitled skin"/>
+</div>
+<div class="history">
+<button id="undo">Undo</button>
+<button id="redo">Redo</button>
+</div>
+</div>
+<div class="creator-options">
+<section class="option-block pattern-block">
+<div class="option-title">PATTERN</div>
+<div class="pattern-buttons" id="patternButtons"></div>
+</section>
+<section class="option-block">
+<div class="option-title">PATTERN VARIATION</div>
+<div class="segmented" id="variationButtons">
+<button data-value="0">Small</button>
+<button class="active" data-value="1">Medium</button>
+<button data-value="2">Large</button>
+</div>
+</section>
+<section class="option-block">
+<div class="option-title">PREVIEW SEX</div>
+<div class="segmented" id="sexButtons">
+<button class="active" data-value="male">Male</button>
+<button data-value="female">Female</button>
+</div>
+</section>
+</div>
+<div class="section-head">
+<div>
+<div class="kicker">COLOURS</div>
+<span class="section-sub">All ten server-controlled CustomizerData regions</span>
+</div>
+<div class="quick-actions">
+<button id="naturalize">Naturalize</button>
+<button id="randomize">Randomize</button>
+<button id="resetSkin">Reset</button>
+</div>
+</div>
+<div class="presets" id="presets"></div>
+<div class="color-list" id="colors"></div>
 
-<main class="creator">
-  <section class="preview-panel panel">
-    <div class="panel-head">
-      <div>
-        <div class="kicker">DINOSAUR PREVIEW</div>
-        <h2 id="previewTitle">Tyrannosaurus</h2>
-      </div>
-      <div class="preview-meta">
-        <span id="categoryBadge" class="chip-label">Apex Carnivore</span>
-        <span id="modelBadge" class="chip-label model-loading">Loading 3D…</span>
-      </div>
-    </div>
 
-    <div class="species-row">
-      <select id="species"></select>
-      <button id="randomSpecies">Random species</button>
-    </div>
 
-    <div id="viewerShell" class="viewer-shell scene-studio">
-      <canvas id="viewer3d" aria-label="Interactive dinosaur skin preview"></canvas>
-      <img id="fallbackImage" class="fallback-image" alt="Evrima species reference">
-      <div id="referenceCard" class="reference-card">
-        <span>EVRIMA REFERENCE</span>
-        <img id="referenceImage" alt="Selected Evrima species reference">
-      </div>
-      <div id="viewerLoading" class="viewer-loading">
-        <div class="spinner"></div>
-        <span>Loading dinosaur model…</span>
-      </div>
-      <div id="viewerMessage" class="viewer-message"></div>
-      <div class="viewer-topline">
-        <span id="viewerSpecies">Tyrannosaurus</span>
-        <div class="viewer-actions">
-          <div id="previewModeTabs" class="preview-mode-tabs">
-            <button data-preview-mode="hq" class="tiny">EVRIMA 3D</button>
-            <button data-preview-mode="skin3d" class="tiny active">COLOUR 3D</button>
-            <button data-preview-mode="2d" class="tiny">SIDE VIEW</button>
-          </div>
-          <button id="resetCamera" class="tiny">Reset camera</button>
-        </div>
-      </div>
-
-      <div class="scene-controls">
-        <div class="scene-title">SCENE</div>
-        <label class="switch-row">
-          <span>Background</span>
-          <input id="backgroundEnabled" type="checkbox" checked>
-        </label>
-        <label>
-          <span>Scene</span>
-          <select id="sceneSelect">
-            <option value="jungle">Jungle ambience</option>
-            <option value="lagoon">Lagoon</option>
-            <option value="studio" selected>Dark studio</option>
-            <option value="night">Night forest</option>
-          </select>
-        </label>
-        <label>
-          <span>Backdrop brightness <b id="brightnessValue">82%</b></span>
-          <input id="backdropBrightness" type="range" min="30" max="125" value="82">
-        </label>
-        <label>
-          <span>Lighting <b id="lightingValue">90%</b></span>
-          <input id="lighting" type="range" min="35" max="140" value="90">
-        </label>
-        <label class="switch-row">
-          <span>Idle animation</span>
-          <input id="idleEnabled" type="checkbox" checked>
-        </label>
-      </div>
-
-      <div id="viewerHint" class="viewer-hint">Drag to rotate · wheel to zoom</div>
-      <div id="paletteBar" class="palette-bar"></div>
-    </div>
-
-    <div class="preview-fidelity">
-      <strong id="fidelityTitle">HQ 3D preview</strong>
-      <span id="fidelityText">Researched Evrima-source preview: verified species GLB + source pattern, RAC and normal-map compositing through the Railway asset proxy.</span>
-    </div>
-
-    <div class="apply-row">
-      <button id="apply" class="primary">APPLY TO MY DINOSAUR</button>
-      <button id="saveSkin">SAVE SKIN</button>
-    </div>
-    <div id="result" class="result"></div>
-    <div id="applyLive" class="apply-live">
-      <div class="apply-live-head">
-        <strong id="applyLiveTitle">Apply status</strong>
-        <span id="applyLiveTime"></span>
-      </div>
-      <div class="apply-steps" id="applySteps">
-        <div class="apply-step" data-stage="sending">Sending</div>
-        <div class="apply-step" data-stage="queued">Railway</div>
-        <div class="apply-step" data-stage="delivered">Bridge</div>
-        <div class="apply-step" data-stage="accepted">UE4SS</div>
-        <div class="apply-step" data-stage="applied">Applied</div>
-      </div>
-      <div id="applyLiveNote" class="apply-live-note">No Apply request yet.</div>
-      <div class="apply-history">
-        <div class="apply-history-head">
-          <strong>Recent Apply requests</strong>
-          <button id="refreshApplyHistory" type="button">Refresh</button>
-        </div>
-        <div id="applyHistoryList" class="apply-history-list"></div>
-      </div>
-    </div>
-
-    <div class="account-card">
-      <div>
-        <strong id="accountTitle">Steam not linked</strong>
-        <span id="accountDetail">Sign in once. No client files or commands are required.</span>
-      </div>
-      <button id="steamButton">Sign in with Steam</button>
-    </div>
-  </section>
-
-  <section class="editor-panel panel">
-    <div class="editor-head">
-      <div>
-        <div class="kicker">MY CUSTOM SKIN</div>
-        <input id="skinName" class="skin-name" maxlength="32" placeholder="Untitled skin">
-      </div>
-      <div class="history">
-        <button id="undo">Undo</button>
-        <button id="redo">Redo</button>
-      </div>
-    </div>
-
-    <div class="creator-options">
-      <section class="option-block pattern-block">
-        <div class="option-title">PATTERN</div>
-        <div id="patternButtons" class="pattern-buttons"></div>
-      </section>
-
-      <section class="option-block">
-        <div class="option-title">PATTERN VARIATION</div>
-        <div id="variationButtons" class="segmented">
-          <button data-value="0">Small</button>
-          <button data-value="1" class="active">Medium</button>
-          <button data-value="2">Large</button>
-        </div>
-      </section>
-
-      <section class="option-block">
-        <div class="option-title">PREVIEW SEX</div>
-        <div id="sexButtons" class="segmented">
-          <button data-value="male" class="active">Male</button>
-          <button data-value="female">Female</button>
-        </div>
-      </section>
-    </div>
-
-    <div class="section-head">
-      <div>
-        <div class="kicker">COLOURS</div>
-        <span class="section-sub">All ten server-controlled CustomizerData regions</span>
-      </div>
-      <div class="quick-actions">
-        <button id="naturalize">Naturalize</button>
-        <button id="randomize">Randomize</button>
-        <button id="resetSkin">Reset</button>
-      </div>
-    </div>
-
-    <div id="presets" class="presets"></div>
-    <div id="colors" class="color-list"></div>
-
-    <div class="saved-area cloud-library">
-      <div class="section-head compact">
-        <div>
-          <div class="kicker">STEAM CLOUD LIBRARY</div>
-          <span id="cloudLibraryStatus" class="section-sub">Sign in with Steam to sync saved skins</span>
-        </div>
-        <div class="quick-actions">
-          <button id="refreshCloud">Refresh</button>
-          <button id="saveCloud">Save current</button>
-        </div>
-      </div>
-      <div class="cloud-tools">
-        <input id="cloudSearch" type="search" placeholder="Search name, species or tags">
-        <select id="cloudSpeciesFilter"><option value="">All species</option></select>
-        <select id="cloudSort">
-          <option value="updated">Newest</option>
-          <option value="name">Name A–Z</option>
-          <option value="species">Species</option>
-        </select>
-      </div>
-      <div class="cloud-filter-actions">
-        <button id="cloudFavoritesOnly" type="button">☆ Favourites only</button>
-        <button id="clearCloudFilters" type="button">Clear filters</button>
-      </div>
-      <div class="saved-row">
-        <select id="cloudSkins"><option value="">Steam library not loaded</option></select>
-        <button id="loadCloud">Load</button>
-        <button id="favoriteCloud">☆ Favourite</button>
-      </div>
-      <div id="cloudCount" class="cloud-count"></div>
-      <div class="cloud-actions">
-        <button id="duplicateCloud">Duplicate</button>
-        <button id="renameCloud">Rename</button>
-        <button id="deleteCloud">Delete</button>
-        <button id="loadLastApplied">Last applied</button>
-      </div>
-      <div class="cloud-meta">
-        <input id="cloudTags" maxlength="170" placeholder="Tags: realistic, jungle, dark">
-        <select id="cloudVisibility" title="Publishing is added in Step 6B">
-          <option value="private">Private</option>
-          <option value="unlisted">Unlisted</option>
-          <option value="public">Public</option>
-        </select>
-        <button id="saveCloudMeta" type="button">Save metadata</button>
-        <div class="cloud-meta-note">Tags sync with Steam. Visibility is stored now as publishing groundwork; Public/Unlisted does not publish anything until Step 6B.</div>
-      </div>
-      <div class="cloud-io">
-        <button id="exportCloud" type="button">Export selected</button>
-        <button id="exportCloudAll" type="button">Export library</button>
-        <button id="importCloud" type="button">Import JSON</button>
-      </div>
-      <input id="cloudImportFile" type="file" accept="application/json,.json" hidden>
-    </div>
-
-    <div class="saved-area">
-      <div class="section-head compact">
-        <div>
-          <div class="kicker">BROWSER BACKUPS</div>
-          <span class="section-sub">Local fallback retained on this browser</span>
-        </div>
-      </div>
-      <div class="saved-row">
-        <select id="savedSkins"><option value="">No browser backups yet</option></select>
-        <button id="loadSaved">Load</button>
-        <button id="deleteSaved">Delete</button>
-      </div>
-    </div>
-
-    <details class="advanced">
-      <summary>Share / advanced</summary>
-      <div class="share-row">
-        <input id="shareCode" class="mono" placeholder="FGY2:...">
-        <button id="copyCode">Copy</button>
-        <button id="importCode">Import</button>
-      </div>
-      <p>The share code is only a portable backup. Website Apply sends structured skin data directly through Railway to your server bridge.</p>
-    </details>
-  </section>
+</section>
+</main></section><section class="app-page" data-app-page="library" id="page-library">
+<main class="page-shell">
+<div class="page-heading"><div><div class="kicker">MY SKINS</div><h2>Library</h2><p>Steam-linked skins, local backups and portable share tools.</p></div></div>
+<div class="library-page-grid">
+<section class="page-column" id="libraryCloudHost"><div class="saved-area cloud-library">
+<div class="section-head compact">
+<div>
+<div class="kicker">STEAM CLOUD LIBRARY</div>
+<span class="section-sub" id="cloudLibraryStatus">Sign in with Steam to sync saved skins</span>
+</div>
+<div class="quick-actions">
+<button id="refreshCloud">Refresh</button>
+<button id="saveCloud">Save current</button>
+</div>
+</div>
+<div class="cloud-tools">
+<input id="cloudSearch" placeholder="Search name, species or tags" type="search"/>
+<select id="cloudSpeciesFilter"><option value="">All species</option></select>
+<select id="cloudSort">
+<option value="updated">Newest</option>
+<option value="name">Name A–Z</option>
+<option value="species">Species</option>
+</select>
+</div>
+<div class="cloud-filter-actions">
+<button id="cloudFavoritesOnly" type="button">☆ Favourites only</button>
+<button id="clearCloudFilters" type="button">Clear filters</button>
+</div>
+<div class="saved-row">
+<select id="cloudSkins"><option value="">Steam library not loaded</option></select>
+<button id="loadCloud">Load</button>
+<button id="favoriteCloud">☆ Favourite</button>
+</div>
+<div class="cloud-count" id="cloudCount"></div>
+<div class="cloud-actions">
+<button id="duplicateCloud">Duplicate</button>
+<button id="renameCloud">Rename</button>
+<button id="deleteCloud">Delete</button>
+<button id="loadLastApplied">Last applied</button>
+</div>
+<div class="cloud-meta">
+<input id="cloudTags" maxlength="170" placeholder="Tags: realistic, jungle, dark"/>
+<select id="cloudVisibility" title="Default visibility used by the Publish tab">
+<option value="private">Private</option>
+<option value="unlisted">Unlisted</option>
+<option value="public">Public</option>
+</select>
+<button id="saveCloudMeta" type="button">Save metadata</button>
+<div class="cloud-meta-note">Tags and default visibility sync with Steam. Publishing is managed separately on the Publish tab; editing this metadata never silently changes an existing published snapshot.</div>
+</div>
+<div class="cloud-io">
+<button id="exportCloud" type="button">Export selected</button>
+<button id="exportCloudAll" type="button">Export library</button>
+<button id="importCloud" type="button">Import JSON</button>
+</div>
+<input accept="application/json,.json" hidden="" id="cloudImportFile" type="file"/>
+</div></section>
+<section class="page-column" id="libraryLocalHost"><div class="saved-area">
+<div class="section-head compact">
+<div>
+<div class="kicker">BROWSER BACKUPS</div>
+<span class="section-sub">Local fallback retained on this browser</span>
+</div>
+</div>
+<div class="saved-row">
+<select id="savedSkins"><option value="">No browser backups yet</option></select>
+<button id="loadSaved">Load</button>
+<button id="deleteSaved">Delete</button>
+</div>
+</div><details class="advanced">
+<summary>Share / advanced</summary>
+<div class="share-row">
+<input class="mono" id="shareCode" placeholder="FGY2:..."/>
+<button id="copyCode">Copy</button>
+<button id="importCode">Import</button>
+</div>
+<p>The share code is only a portable backup. Website Apply sends structured skin data directly through Railway to your server bridge.</p>
+</details></section>
+</div>
 </main>
-
+</section><section class="app-page" data-app-page="publishing" id="page-publishing">
+<main class="page-shell">
+<div class="page-heading"><div><div class="kicker">COMMUNITY PUBLISHING</div><h2>Publish skins</h2><p>Publish an explicit snapshot of one of your Steam-library skins. Editing the private original never changes the published copy until you press Update snapshot.</p></div></div>
+<div class="publish-grid">
+<section class="panel publish-card">
+<div class="section-head compact"><div><div class="kicker">PUBLISH A SKIN</div><span class="section-sub" id="publishStatus">Choose a Steam-library skin</span></div><button id="refreshPublished" type="button">Refresh</button></div>
+<label class="field-stack"><span>Source skin</span><select id="publishSource"><option value="">No Steam skins loaded</option></select></label>
+<label class="field-stack"><span>Published title</span><input id="publishTitle" maxlength="48" placeholder="Skin title"/></label>
+<label class="field-stack"><span>Description</span><textarea id="publishDescription" maxlength="240" placeholder="Optional description" rows="4"></textarea></label>
+<label class="field-stack"><span>Visibility</span><select id="publishVisibility"><option value="public">Public</option><option value="unlisted">Unlisted</option></select></label>
+<div class="publish-source-meta" id="publishSourceMeta">Published entries are immutable snapshots.</div>
+<div class="publish-actions"><button class="primary" id="publishNew" type="button">Publish snapshot</button><button id="updatePublished" type="button">Update snapshot</button></div>
+</section>
+<section class="panel publish-card">
+<div class="section-head compact"><div><div class="kicker">MY PUBLISHED SKINS</div><span class="section-sub" id="publishedCount">0 published entries</span></div></div>
+<select id="publishedSkins"><option value="">No published skins yet</option></select>
+<div class="published-details" id="publishedDetails">Select a published entry to manage it.</div>
+<div class="publish-actions four"><button id="previewPublished" type="button">Preview</button><button id="copyPublishedLink" type="button">Copy link</button><button id="unpublishSkin" type="button">Unpublish</button><button id="deletePublished" type="button">Delete</button></div>
+</section>
+<section class="panel publish-card shared-publication" hidden="" id="sharedPublication">
+<div class="section-head compact"><div><div class="kicker">SHARED SKIN</div><span class="section-sub">Public / unlisted snapshot</span></div></div>
+<h3 id="sharedPublicationTitle">Shared skin</h3>
+<p id="sharedPublicationDescription"></p>
+<div class="published-details" id="sharedPublicationMeta"></div>
+<button id="previewSharedPublication" type="button">Open in Studio preview</button>
+</section>
+</div>
+</main>
+</section>
 <footer>
   FOGGY Evrima PvE · researched Evrima-source 3D previews · unverified species use the reference image rather than a fake proxy
 </footer>
 </div>
-
-<div id="toast" class="toast"></div>
+<div class="toast" id="toast"></div>
 <script src="./config.js"></script>
-<script type="module" src="./viewer3d.js?v=083"></script>
-<script src="./app.js?v=093"></script>
+<script src="./viewer3d.js?v=083" type="module"></script>
+<script src="./app.js?v=100"></script>
 </body>
 </html>

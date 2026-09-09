@@ -109,24 +109,34 @@ See [DEPLOYMENT.md](DEPLOYMENT.md). Normal website updates should never replace 
 
 ## Preview asset caching
 
-Web v0.9.3 stores successfully downloaded Evrima preview assets in the browser Cache Storage API, so the same browser does not need to redownload them after a Railway restart or redeploy. Railway also exposes live first-download progress and keeps its existing server-side cache. If a persistent Railway volume is mounted later, set `ASSET_CACHE_DIR` to a path on that volume; otherwise the Railway cache remains temporary while the browser cache remains persistent.
+Web v0.10.0 stores successfully downloaded Evrima preview assets in the browser Cache Storage API, so the same browser does not need to redownload them after a Railway restart or redeploy. Railway also exposes live first-download progress and keeps its existing server-side cache. If a persistent Railway volume is mounted later, set `ASSET_CACHE_DIR` to a path on that volume; otherwise the Railway cache remains temporary while the browser cache remains persistent.
 
 ## Steam-linked skin library
 
-Web v0.9.3 adds a SteamID-scoped saved-skin library. Railway carries authenticated library operations to the existing FOGGY server bridge, while `SkinWebLibrary.json` in the dedicated-server root is the authoritative persistent store. This avoids putting player skin data in Railway's ephemeral filesystem and survives Railway redeploys, game-server restarts and browser changes.
+Web v0.10.0 adds a SteamID-scoped saved-skin library. Railway carries authenticated library operations to the existing FOGGY server bridge, while `SkinWebLibrary.json` in the dedicated-server root is the authoritative persistent store. This avoids putting player skin data in Railway's ephemeral filesystem and survives Railway redeploys, game-server restarts and browser changes.
 
 Each Steam account can keep up to 50 skins with rename, duplicate, delete and favourite controls plus a server-recorded Last Applied snapshot. Browser-local saves remain enabled as a fallback. If the bridge is temporarily offline, normal browser saves still succeed and cloud saves are queued locally for retry when the bridge returns.
 
 ## Live Apply status
 
-Web v0.9.3 shows the real request lifecycle already exposed by the working pipeline: browser sending, Railway queued, bridge delivery, UE4SS handoff, and the final applied/failed result. It does not invent a separate “player found” event because the current UE4SS worker only reports the final result. Pending requests also show when the bridge goes offline/restarts, and the browser keeps a small recent Apply history while the API exposes the authenticated user's recent in-memory requests.
+Web v0.10.0 shows the real request lifecycle already exposed by the working pipeline: browser sending, Railway queued, bridge delivery, UE4SS handoff, and the final applied/failed result. It does not invent a separate “player found” event because the current UE4SS worker only reports the final result. Pending requests also show when the bridge goes offline/restarts, and the browser keeps a small recent Apply history while the API exposes the authenticated user's recent in-memory requests.
 
 ## Multiplayer hardening
 
-Web v0.9.3 / API v0.7.3 / Bridge v0.7.2 / UE4SS v0.6.2 harden the existing pipeline without adding extra UE4SS workers. Apply ownership always comes from the signed Steam session; client payloads cannot choose a SteamID. The API now allows only one in-flight Apply per Steam account, adds per-Steam rate limiting and idempotent client nonces, strictly validates species/pattern/variation values, verifies server identity on bridge writes, ignores stale/duplicate final results, and keeps different players independent. The bridge validates every command before writing the UE4SS inbox and keeps a persistent replay cache. UE4SS also rejects a website species that does not match the authenticated player's live dinosaur when the live species can be resolved.
+Web v0.10.0 / API v0.8.0 / Bridge v0.8.0 / UE4SS v0.6.2 harden the existing pipeline without adding extra UE4SS workers. Apply ownership always comes from the signed Steam session; client payloads cannot choose a SteamID. The API now allows only one in-flight Apply per Steam account, adds per-Steam rate limiting and idempotent client nonces, strictly validates species/pattern/variation values, verifies server identity on bridge writes, ignores stale/duplicate final results, and keeps different players independent. The bridge validates every command before writing the UE4SS inbox and keeps a persistent replay cache. UE4SS also rejects a website species that does not match the authenticated player's live dinosaur when the live species can be resolved.
 
 ## Advanced Library — v0.9.3
 
 The Steam-linked library now supports name/species/tag search, species and favourites filtering, multiple sort modes, up to eight user tags per skin, and stored `private` / `unlisted` / `public` visibility metadata. Visibility is groundwork only in this release: no skin is published until the separate publishing milestone.
 
 Users can export one cloud skin or their entire Steam-linked library as validated JSON, then import up to 50 entries at once. Imports are revalidated by the browser, API and bridge. The bridge skips exact design duplicates and never overwrites an existing cloud skin ID during import. Existing v0.9.2 library entries are migrated in place with empty tags and `private` visibility.
+
+## Publishing Foundation — v0.10.0
+
+The website is now split into top-level **Studio**, **My Library**, and **Publish** pages without duplicating the renderer or Apply pipeline. Page selection is stored in the `view` query parameter so Steam sign-in callbacks continue to use their existing session hash safely.
+
+Publishing creates an explicit immutable snapshot of a Steam-library skin. Private library edits never modify that public/unlisted snapshot until the owner chooses **Update snapshot**. Each Steam account may keep up to 20 active publications. Owners can refresh a snapshot, switch Public/Unlisted visibility, unpublish, delete the published record, copy a share link, and preview the snapshot.
+
+Durable community data is stored separately in `SkinWebCommunity.json` beside `SkinWebLibrary.json`; Railway only keeps a sanitized runtime cache so redeploys cannot destroy the catalogue. Public cache entries never include the owner's SteamID or private library ID. `SkinWebCommunity.json` is written atomically and is synchronized by Bridge v0.8.0.
+
+Step 6C will build the searchable Community discovery page on top of this catalogue.

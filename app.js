@@ -32,6 +32,7 @@ let previewMode="skin3d";
 let session=localStorage.getItem("foggy_skin_session")||"",me=null;
 let history=[],future=[],historyLock=false;
 let cloudLibrary={skins:[],lastApplied:null},activeCloudId="",bridgeOnline=false,cloudBusy=false;
+let publishedMine=[],sharedPublicationItem=null;
 const APPLY_HISTORY_KEY="foggy_apply_history_v1";
 let activeApplyId="",activeApplyData=null,applyPollToken=0,applyBusy=false;
 const $=id=>document.getElementById(id);
@@ -326,6 +327,7 @@ function renderCloudLibrary(){
   $("loadLastApplied").disabled=!cloudLibrary.lastApplied?.skin;
   if($("cloudCount"))$("cloudCount").textContent=`Showing ${skins.length} of ${all.length} Steam skin${all.length===1?"":"s"}`;
   renderCloudMeta();
+  renderPublishingSources();
 }
 function buildCloudFilters(){
   const sel=$("cloudSpeciesFilter");if(!sel)return;
@@ -443,6 +445,86 @@ async function saveCloudMetadata(){
 }
 
 
+
+const APP_PAGES=new Set(["studio","library","publishing"]);
+function currentPageFromUrl(){const q=new URLSearchParams(location.search),p=q.get("view");return APP_PAGES.has(p)?p:(q.get("published")?"publishing":"studio");}
+function setAppPage(page,writeUrl=true){
+  if(!APP_PAGES.has(page))page="studio";
+  document.querySelectorAll("[data-app-page]").forEach(el=>el.classList.toggle("active",el.dataset.appPage===page));
+  document.querySelectorAll(".app-tabs [data-page]").forEach(b=>b.classList.toggle("active",b.dataset.page===page));
+  if(writeUrl){const u=new URL(location.href);u.searchParams.set("view",page);history.replaceState(null,"",u.pathname+u.search);}
+  if(page==="studio")setTimeout(()=>window.dispatchEvent(new Event("resize")),20);
+  if(page==="publishing"&&me)refreshPublishedMine(true);
+}
+function cleanPublishDescription(v){return String(v||"").replace(/[\r\t]/g," ").replace(/\n{3,}/g,"\n\n").trim().slice(0,240);}
+function selectedPublishSource(){return (cloudLibrary.skins||[]).find(s=>s.id===$("publishSource")?.value)||null;}
+function selectedPublished(){return publishedMine.find(x=>x.id===$("publishedSkins")?.value)||null;}
+function setPublishStatus(text,tone=""){const el=$("publishStatus");if(!el)return;el.textContent=text;el.className="section-sub "+(tone?"publishing-"+tone:"");}
+function renderPublishingSources(){
+  const sel=$("publishSource");if(!sel)return;const keep=sel.value;sel.innerHTML="";
+  const skins=[...(cloudLibrary.skins||[])].sort((a,b)=>String(a.name||"").localeCompare(String(b.name||"")));
+  if(!skins.length)sel.append(new Option(me?"No Steam skins yet":"Sign in with Steam",""));
+  else{sel.append(new Option("Choose Steam skin…",""));skins.forEach(s=>sel.append(new Option(`${s.name} · ${s.species}`,s.id)));}
+  if(skins.some(s=>s.id===keep))sel.value=keep;
+  renderPublishSourceMeta(false);
+}
+function renderPublishSourceMeta(fill=false){
+  const s=selectedPublishSource(),box=$("publishSourceMeta");if(!box)return;
+  if(!s){box.textContent="Choose a Steam-library skin. Publishing copies its current design into a separate immutable snapshot.";return;}
+  const tags=(s.tags||[]).join(", ")||"No tags";
+  box.textContent=`${s.species} · Pattern ${Number(s.patternIndex||0)+1} · Variation ${["Small","Medium","Large"][Number(s.skinVariation)||0]}\nTags: ${tags}\nPrivate library ID remains hidden from public viewers.`;
+  if(fill){$("publishTitle").value=s.name||"";$("publishVisibility").value=["public","unlisted"].includes(s.visibility)?s.visibility:"public";}
+}
+async function pollCommunity(id){
+  for(let i=0;i<35;i++){await new Promise(r=>setTimeout(r,650));const d=await api("/api/library/status/"+encodeURIComponent(id));if(d.status==="completed")return d;if(d.status==="failed")throw Error(d.message||"Publishing operation failed");}
+  throw Error("Publishing operation timed out. Refresh and check My Published Skins.");
+}
+async function communityOp(action,payload={}){const d=await api("/api/community/op",{method:"POST",body:JSON.stringify({action,...payload})});return pollCommunity(d.id);}
+function renderPublishedMine(){
+  const sel=$("publishedSkins");if(!sel)return;const keep=sel.value;sel.innerHTML="";
+  const items=[...publishedMine].sort((a,b)=>Number(b.updatedAt||0)-Number(a.updatedAt||0));
+  if(!items.length)sel.append(new Option("No published skins yet",""));
+  else{sel.append(new Option("Choose published skin…",""));items.forEach(x=>sel.append(new Option(`${x.published?x.visibility==="public"?"● ":"◌ ":"○ "}${x.title} · v${x.snapshotVersion||1}`,x.id)));}
+  if(items.some(x=>x.id===keep))sel.value=keep;
+  $("publishedCount").textContent=`${items.filter(x=>x.published).length} active · ${items.length} total`;
+  renderPublishedDetails(false);
+}
+function renderPublishedDetails(fill=false){
+  const x=selectedPublished(),box=$("publishedDetails");if(!box)return;
+  if(!x){box.textContent="Select a published entry to manage it.";return;}
+  const state=x.published?`${x.visibility.toUpperCase()} · live snapshot`:`UNPUBLISHED`;
+  box.textContent=`${state}\n${x.snapshot?.species||"unknown"} · Pattern ${Number(x.snapshot?.patternIndex||0)+1} · Snapshot v${x.snapshotVersion||1}\nLast updated ${new Date(Number(x.updatedAt||Date.now())).toLocaleString()}`;
+  if(fill){$("publishTitle").value=x.title||"";$("publishDescription").value=x.description||"";$("publishVisibility").value=["public","unlisted"].includes(x.visibility)?x.visibility:"public";if(x.sourceSkinId&&[...$("publishSource").options].some(o=>o.value===x.sourceSkinId))$("publishSource").value=x.sourceSkinId;renderPublishSourceMeta(false);}
+}
+async function refreshPublishedMine(silent=true){
+  if(!me){publishedMine=[];renderPublishedMine();setPublishStatus("Sign in with Steam to publish","");return false;}
+  if(!bridgeOnline){setPublishStatus("Server bridge offline — published data is safely stored locally on the server","warn");return false;}
+  try{const r=await communityOp("mine");publishedMine=Array.isArray(r.data?.items)?r.data.items:[];renderPublishedMine();setPublishStatus(`Publishing ready · ${publishedMine.filter(x=>x.published).length}/20 active`,"good");if(!silent)toast("Published skins refreshed");return true;}catch(e){setPublishStatus(e.message,"bad");if(!silent)toast(e.message);return false;}
+}
+async function publishSourceSkin(){
+  const s=selectedPublishSource();if(!s)return toast("Choose a Steam-library skin first");
+  const title=String($("publishTitle").value||s.name||"").trim().slice(0,48),description=cleanPublishDescription($("publishDescription").value),visibility=$("publishVisibility").value;
+  if(!title)return toast("Published title is required");
+  try{setPublishStatus("Publishing immutable snapshot…","warn");const r=await communityOp("publish",{sourceSkinId:s.id,title,description,visibility});await refreshCloudLibrary(true);await refreshPublishedMine(true);if(r.data?.item?.id){$("publishedSkins").value=r.data.item.id;renderPublishedDetails(true);}toast(r.data?.republished?"Skin republished":"Skin published");}catch(e){setPublishStatus(e.message,"bad");toast(e.message);}
+}
+async function updatePublishedSnapshot(){
+  const x=selectedPublished();if(!x)return toast("Choose a published skin first");
+  const title=String($("publishTitle").value||x.title||"").trim().slice(0,48),description=cleanPublishDescription($("publishDescription").value),visibility=$("publishVisibility").value;
+  try{setPublishStatus("Updating published snapshot…","warn");await communityOp("update",{id:x.id,title,description,visibility});await refreshCloudLibrary(true);await refreshPublishedMine(true);$("publishedSkins").value=x.id;renderPublishedDetails(true);toast("Published snapshot updated");}catch(e){setPublishStatus(e.message,"bad");toast(e.message);}
+}
+async function unpublishSelected(){const x=selectedPublished();if(!x)return toast("Choose a published skin first");if(!confirm(`Unpublish “${x.title}”? Its public/unlisted link will stop working.`))return;try{await communityOp("unpublish",{id:x.id});await refreshCloudLibrary(true);await refreshPublishedMine(true);toast("Skin unpublished");}catch(e){toast(e.message);}}
+async function deletePublishedSelected(){const x=selectedPublished();if(!x)return toast("Choose a published skin first");if(!confirm(`Delete published record “${x.title}”? This does not delete your Steam-library skin.`))return;try{await communityOp("delete",{id:x.id});await refreshCloudLibrary(true);await refreshPublishedMine(true);toast("Published record deleted");}catch(e){toast(e.message);}}
+function publishedLink(id){const u=new URL(location.href);u.search="";u.searchParams.set("published",id);u.searchParams.set("view","publishing");u.hash="";return u.toString();}
+async function copyPublishedShareLink(){const x=selectedPublished();if(!x||!x.published)return toast("Choose an active published skin first");const link=publishedLink(x.id);try{await navigator.clipboard.writeText(link);toast(x.visibility==="unlisted"?"Unlisted link copied":"Public link copied");}catch{prompt("Copy this link",link);}}
+function previewCommunitySnapshot(item){if(!item?.snapshot)return;pushHistory();restore(item.snapshot);$("skinName").value=item.title||item.snapshot.name||"Published Skin";setAppPage("studio",true);toast("Published snapshot opened in Studio preview");}
+function renderSharedPublication(item){
+  sharedPublicationItem=item||null;const box=$("sharedPublication");if(!box)return;
+  if(!item){box.hidden=true;return;}box.hidden=false;$("sharedPublicationTitle").textContent=item.title||"Shared skin";$("sharedPublicationDescription").textContent=item.description||"No description provided.";
+  const tags=(item.snapshot?.tags||[]).join(", ")||"No tags";$("sharedPublicationMeta").textContent=`${item.snapshot?.species||"unknown"} · Pattern ${Number(item.snapshot?.patternIndex||0)+1} · ${item.visibility}\nTags: ${tags} · Snapshot v${item.snapshotVersion||1}`;
+}
+async function loadSharedPublicationFromUrl(){const q=new URLSearchParams(location.search),id=q.get("published");if(!id){renderSharedPublication(null);return;}try{const d=await api("/api/community/item/"+encodeURIComponent(id));renderSharedPublication(d.item);setAppPage("publishing",false);}catch(e){renderSharedPublication(null);toast(e.message);}}
+
+
 const APPLY_STAGE_ORDER=["sending","queued","delivered","accepted","applied"];
 function applyHistoryRead(){try{const d=JSON.parse(localStorage.getItem(APPLY_HISTORY_KEY)||"[]");return Array.isArray(d)?d:[]}catch{return[]}}
 function applyHistoryWrite(items){localStorage.setItem(APPLY_HISTORY_KEY,JSON.stringify(items.slice(0,12)))}
@@ -532,8 +614,8 @@ async function refreshMe(){
   if(!API_READY){$("apiStatus").textContent="API not configured";$("apiStatus").className="status warn";setCloudStatus("Cloud library unavailable","bad");return;}
   try{await api("/health");$("apiStatus").textContent="Skin API online";$("apiStatus").className="status good";}
   catch{$("apiStatus").textContent="Skin API unreachable";$("apiStatus").className="status bad";}
-  if(!session){me=null;cloudLibrary={skins:[],lastApplied:null};activeCloudId="";renderCloudLibrary();setCloudStatus("Sign in with Steam to sync saved skins","");$("accountTitle").textContent="Steam not linked";$("accountDetail").textContent="Sign in once. No client files or commands required.";$("steamButton").textContent="Sign in with Steam";return;}
-  try{me=await api("/api/me");$("accountTitle").textContent="Steam linked";$("accountDetail").textContent="SteamID64 "+me.steam;$("steamButton").textContent="Sign out";loadCachedCloudLibrary();refreshCloudLibrary(true);refreshApplyHistory(true);}
+  if(!session){me=null;cloudLibrary={skins:[],lastApplied:null};activeCloudId="";publishedMine=[];renderCloudLibrary();renderPublishedMine();setCloudStatus("Sign in with Steam to sync saved skins","");setPublishStatus("Sign in with Steam to publish","");$("accountTitle").textContent="Steam not linked";$("accountDetail").textContent="Sign in once. No client files or commands required.";$("steamButton").textContent="Sign in with Steam";return;}
+  try{me=await api("/api/me");$("accountTitle").textContent="Steam linked";$("accountDetail").textContent="SteamID64 "+me.steam;$("steamButton").textContent="Sign out";loadCachedCloudLibrary();refreshCloudLibrary(true);refreshApplyHistory(true);refreshPublishedMine(true);}
   catch{session="";localStorage.removeItem("foggy_skin_session");me=null;refreshMe();}
 }
 let statusRefreshBusy=false;
@@ -545,7 +627,7 @@ async function refreshServerStatus(){
     const was=bridgeOnline;bridgeOnline=Boolean(d.online);
     $("serverStatus").textContent=bridgeOnline?"FOGGY server bridge online":"FOGGY server bridge offline";
     $("serverStatus").className=bridgeOnline?"status good":"status bad";
-    if(bridgeOnline&&!was&&me){flushCloudQueue().then(()=>refreshCloudLibrary(true));}
+    if(bridgeOnline&&!was&&me){flushCloudQueue().then(()=>refreshCloudLibrary(true));refreshPublishedMine(true);}
   }catch{
     bridgeOnline=false;$("serverStatus").textContent="Bridge status unavailable";
     $("serverStatus").className="status warn";
@@ -615,7 +697,7 @@ async function applySkin(){
 }
 
 
-buildSpecies();buildColors();buildPresets();buildCloudFilters();refreshSaved();renderCloudLibrary();renderApplyHistory();readAuthHash();renderAll();refreshMe();refreshServerStatus();
+buildSpecies();buildColors();buildPresets();buildCloudFilters();refreshSaved();renderCloudLibrary();renderPublishedMine();renderApplyHistory();readAuthHash();renderAll();setAppPage(currentPageFromUrl(),false);refreshMe();refreshServerStatus();loadSharedPublicationFromUrl();
 setInterval(refreshServerStatus,10000);
 
 $("species").onchange=e=>{pushHistory();selected=SPECIES.find(s=>s.slug===e.target.value)||SPECIES[0];patternIndex=0;renderAll();};
@@ -641,6 +723,17 @@ $("exportCloud").onclick=exportSelectedCloud;
 $("exportCloudAll").onclick=exportCloudLibrary;
 $("importCloud").onclick=()=>$("cloudImportFile").click();
 $("cloudImportFile").onchange=async e=>{const f=e.target.files?.[0];e.target.value="";if(f)await importCloudFile(f);};
+document.querySelectorAll(".app-tabs [data-page]").forEach(b=>b.onclick=()=>setAppPage(b.dataset.page,true));
+$("publishSource").onchange=()=>renderPublishSourceMeta(true);
+$("publishedSkins").onchange=()=>renderPublishedDetails(true);
+$("refreshPublished").onclick=()=>refreshPublishedMine(false);
+$("publishNew").onclick=publishSourceSkin;
+$("updatePublished").onclick=updatePublishedSnapshot;
+$("unpublishSkin").onclick=unpublishSelected;
+$("deletePublished").onclick=deletePublishedSelected;
+$("copyPublishedLink").onclick=copyPublishedShareLink;
+$("previewPublished").onclick=()=>{const x=selectedPublished();if(x)previewCommunitySnapshot(x);else toast("Choose a published skin first");};
+$("previewSharedPublication").onclick=()=>previewCommunitySnapshot(sharedPublicationItem);
 $("copyCode").onclick=async()=>{try{await navigator.clipboard.writeText(shareCode());toast("Share code copied");}catch{prompt("Copy this code",shareCode());}};
 $("importCode").onclick=()=>importCode($("shareCode").value);
 $("undo").onclick=()=>{if(!history.length)return;future.push(snapshot());restore(history.pop());};

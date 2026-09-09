@@ -1,4 +1,4 @@
-# FOGGY Evrima Skin API v0.7.3
+# FOGGY Evrima Skin API v0.8.0
 
 Railway backend for the FOGGY Evrima Skin Studio.
 
@@ -47,7 +47,7 @@ Authenticated users submit library operations through `POST /api/library/op` and
 
 `GET /api/skins/status/:id` now returns species, pattern, bridge-online state, and lifecycle timestamps. `GET /api/skins/recent` returns the signed-in user's eight most recent in-memory Apply requests. New Apply requests are rejected with HTTP 503 when the bridge heartbeat is offline instead of being silently queued into a dead path.
 
-### v0.7.3 hardening
+### v0.8.0 hardening
 
 - Apply requests are Steam-session owned; SteamID is never accepted from the browser payload.
 - One in-flight Apply per Steam account prevents stale same-player races while still allowing different players to Apply concurrently.
@@ -59,4 +59,8 @@ Authenticated users submit library operations through `POST /api/library/op` and
 
 ### Advanced library operations
 
-API v0.7.3 validates and forwards `metadata` operations (`id`, up to 8 tags, visibility) and `import` operations (1–50 validated skins) to Bridge v0.7.2. Visibility accepts only `private`, `unlisted`, or `public`; it is metadata only until the publishing API is introduced. Imported skins pass the same species/pattern/variation/colour validation as normal cloud saves.
+API v0.8.0 validates and forwards `metadata` operations (`id`, up to 8 tags, visibility) and `import` operations (1–50 validated skins) to Bridge v0.7.2. Visibility accepts only `private`, `unlisted`, or `public`; it is metadata only until the publishing API is introduced. Imported skins pass the same species/pattern/variation/colour validation as normal cloud saves.
+
+### Publishing API
+
+API v0.8.0 adds authenticated `POST /api/community/op` actions (`mine`, `publish`, `update`, `unpublish`, `delete`), public `GET /api/community/public`, and public/unlisted `GET /api/community/item/:id`. Publishing commands reuse the hardened bridge command/result transport, but Steam ownership always comes from the signed session. The bridge heartbeat supplies a sanitized catalogue cache; durable authority remains `SkinWebCommunity.json` on the server machine.
