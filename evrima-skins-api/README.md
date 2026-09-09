@@ -1,4 +1,4 @@
-# FOGGY Evrima Skin API v0.7.0
+# FOGGY Evrima Skin API v0.7.1
 
 Railway backend for the FOGGY Evrima Skin Studio.
 
@@ -42,3 +42,7 @@ Steam OpenID is used for identity. A Steam Web API key is not required. Persiste
 ## Steam library protocol
 
 Authenticated users submit library operations through `POST /api/library/op` and poll `GET /api/library/status/:id`. Railway does not persist the library itself: the authenticated server bridge receives `libraryCommands` from `/api/server/commands`, applies them to `SkinWebLibrary.json`, and reports results through `POST /api/server/library/result`. This keeps the persistent source of truth on the dedicated server.
+
+### Live Apply status
+
+`GET /api/skins/status/:id` now returns species, pattern, bridge-online state, and lifecycle timestamps. `GET /api/skins/recent` returns the signed-in user's eight most recent in-memory Apply requests. New Apply requests are rejected with HTTP 503 when the bridge heartbeat is offline instead of being silently queued into a dead path.

@@ -109,10 +109,14 @@ See [DEPLOYMENT.md](DEPLOYMENT.md). Normal website updates should never replace 
 
 ## Preview asset caching
 
-Web v0.9.0 stores successfully downloaded Evrima preview assets in the browser Cache Storage API, so the same browser does not need to redownload them after a Railway restart or redeploy. Railway also exposes live first-download progress and keeps its existing server-side cache. If a persistent Railway volume is mounted later, set `ASSET_CACHE_DIR` to a path on that volume; otherwise the Railway cache remains temporary while the browser cache remains persistent.
+Web v0.9.1 stores successfully downloaded Evrima preview assets in the browser Cache Storage API, so the same browser does not need to redownload them after a Railway restart or redeploy. Railway also exposes live first-download progress and keeps its existing server-side cache. If a persistent Railway volume is mounted later, set `ASSET_CACHE_DIR` to a path on that volume; otherwise the Railway cache remains temporary while the browser cache remains persistent.
 
 ## Steam-linked skin library
 
-Web v0.9.0 adds a SteamID-scoped saved-skin library. Railway carries authenticated library operations to the existing FOGGY server bridge, while `SkinWebLibrary.json` in the dedicated-server root is the authoritative persistent store. This avoids putting player skin data in Railway's ephemeral filesystem and survives Railway redeploys, game-server restarts and browser changes.
+Web v0.9.1 adds a SteamID-scoped saved-skin library. Railway carries authenticated library operations to the existing FOGGY server bridge, while `SkinWebLibrary.json` in the dedicated-server root is the authoritative persistent store. This avoids putting player skin data in Railway's ephemeral filesystem and survives Railway redeploys, game-server restarts and browser changes.
 
 Each Steam account can keep up to 50 skins with rename, duplicate, delete and favourite controls plus a server-recorded Last Applied snapshot. Browser-local saves remain enabled as a fallback. If the bridge is temporarily offline, normal browser saves still succeed and cloud saves are queued locally for retry when the bridge returns.
+
+## Live Apply status
+
+Web v0.9.1 shows the real request lifecycle already exposed by the working pipeline: browser sending, Railway queued, bridge delivery, UE4SS handoff, and the final applied/failed result. It does not invent a separate “player found” event because the current UE4SS worker only reports the final result. Pending requests also show when the bridge goes offline/restarts, and the browser keeps a small recent Apply history while the API exposes the authenticated user's recent in-memory requests.

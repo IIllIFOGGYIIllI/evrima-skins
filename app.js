@@ -32,6 +32,8 @@ let previewMode="skin3d";
 let session=localStorage.getItem("foggy_skin_session")||"",me=null;
 let history=[],future=[],historyLock=false;
 let cloudLibrary={skins:[],lastApplied:null},activeCloudId="",bridgeOnline=false,cloudBusy=false;
+const APPLY_HISTORY_KEY="foggy_apply_history_v1";
+let activeApplyId="",activeApplyData=null,applyPollToken=0;
 const $=id=>document.getElementById(id);
 
 function toast(m){
@@ -329,6 +331,88 @@ async function duplicateCloudSkin(){const s=selectedCloud();if(!s)return toast("
 async function deleteCloudSkin(){const s=selectedCloud();if(!s)return toast("Choose a Steam skin first");if(!confirm(`Delete “${s.name}” from your Steam library?`))return;if(await mutateCloud("delete",{id:s.id},"Cloud skin deleted")&&activeCloudId===s.id)activeCloudId="";}
 async function favoriteCloudSkin(){const s=selectedCloud();if(!s)return toast("Choose a Steam skin first");await mutateCloud("favorite",{id:s.id,favorite:!s.favorite},s.favorite?"Removed from favourites":"Added to favourites");}
 
+
+const APPLY_STAGE_ORDER=["sending","queued","delivered","accepted","applied"];
+function applyHistoryRead(){try{const d=JSON.parse(localStorage.getItem(APPLY_HISTORY_KEY)||"[]");return Array.isArray(d)?d:[]}catch{return[]}}
+function applyHistoryWrite(items){localStorage.setItem(APPLY_HISTORY_KEY,JSON.stringify(items.slice(0,12)))}
+function mergeApplyHistory(item){
+  if(!item?.id)return;
+  const items=applyHistoryRead(),i=items.findIndex(x=>x.id===item.id);
+  const next={...(i>=0?items[i]:{}),...item,updatedAt:Date.now()};
+  if(i>=0)items.splice(i,1);items.unshift(next);applyHistoryWrite(items);renderApplyHistory();
+}
+function fmtApplyTime(ms){if(!ms)return"";try{return new Date(ms).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit",second:"2-digit"})}catch{return""}}
+function stageRank(status,d){
+  if(status==="sending")return 0;
+  if(status==="queued")return 1;
+  if(status==="delivered")return 2;
+  if(status==="accepted")return 3;
+  if(status==="applied")return 4;
+  const t=d?.timeline||{};
+  if(t.acceptedAt)return 3;if(t.deliveredAt)return 2;if(t.queuedAt||d?.createdAt)return 1;return 0;
+}
+function applyStageNote(d){
+  if(!d)return"No Apply request yet.";
+  const s=d.status;
+  if(s==="sending")return"Sending the skin to Railway…";
+  if(s==="queued")return d.bridgeOnline===false?"Railway received it, but the FOGGY bridge is offline or restarting.":"Railway received the request. Waiting for the FOGGY bridge.";
+  if(s==="delivered")return"FOGGY bridge received the request and is handing it to the server-side skin worker.";
+  if(s==="accepted")return d.bridgeOnline===false?"The request reached the server, but the bridge is now offline or restarting. Waiting for final UE4SS confirmation.":"UE4SS handoff confirmed. Waiting for your live dinosaur to be found and the skin operation to finish.";
+  if(s==="applied")return d.message||"Skin applied successfully.";
+  if(s==="failed")return d.message||"The server-side skin operation failed.";
+  if(s==="superseded")return d.message||"A newer Apply request replaced this one.";
+  return d.message||"Waiting for status…";
+}
+function renderApplyStatus(d){
+  if(!d)return;
+  activeApplyData=d;
+  const panel=$("applyLive");panel.classList.add("show");
+  const terminal=d.status==="failed"||d.status==="superseded";
+  const rank=stageRank(d.status,d);
+  document.querySelectorAll("#applySteps .apply-step").forEach((el,i)=>{
+    el.classList.remove("done","active","failed");
+    if(terminal&&i===rank)el.classList.add("failed");
+    else if(i<rank||(d.status==="applied"&&i<=rank))el.classList.add("done");
+    else if(i===rank&&d.status!=="applied")el.classList.add("active");
+  });
+  $("applyLiveTitle").textContent=d.status==="applied"?"Apply complete":d.status==="failed"?"Apply failed":d.status==="superseded"?"Apply superseded":"Live Apply status";
+  $("applyLiveTime").textContent=fmtApplyTime(d.completedAt||d.updatedAt||d.createdAt);
+  $("applyLiveNote").textContent=applyStageNote(d);
+  mergeApplyHistory({
+    id:d.id||activeApplyId,species:d.species||selected.slug,patternIndex:Number(d.patternIndex??patternIndex),
+    status:d.status,message:d.message||"",createdAt:d.createdAt||Date.now(),completedAt:d.completedAt||0,
+    bridgeOnline:d.bridgeOnline
+  });
+}
+function renderApplyHistory(){
+  const box=$("applyHistoryList");if(!box)return;
+  const items=applyHistoryRead().slice(0,8);box.innerHTML="";
+  if(!items.length){
+    const empty=document.createElement("div");empty.className="apply-history-meta";empty.textContent="No Apply requests recorded in this browser yet.";box.appendChild(empty);return;
+  }
+  for(const item of items){
+    const row=document.createElement("div");row.className="apply-history-item";
+    const main=document.createElement("div");main.className="apply-history-main";
+    const title=document.createElement("span");title.className="apply-history-title";
+    const sp=SPECIES.find(s=>s.slug===item.species);title.textContent=`${sp?.name||item.species||"Dinosaur"} · Pattern ${Number(item.patternIndex||0)+1}`;
+    const meta=document.createElement("span");meta.className="apply-history-meta";
+    meta.textContent=`${fmtApplyTime(item.createdAt)}${item.message?" · "+item.message:""}`;
+    main.append(title,meta);
+    const badge=document.createElement("span");badge.className="apply-history-badge "+(item.status==="applied"?"ok":item.status==="failed"||item.status==="superseded"?"err":"wait");
+    badge.textContent=String(item.status||"pending").replace(/^./,c=>c.toUpperCase());
+    row.append(main,badge);box.appendChild(row);
+  }
+}
+async function refreshApplyHistory(silent=true){
+  renderApplyHistory();
+  if(!me||!API_READY)return;
+  try{
+    const d=await api("/api/skins/recent");
+    for(const r of [...(d.requests||[])].reverse())mergeApplyHistory(r);
+    if(!silent)toast("Apply history refreshed");
+  }catch(e){if(!silent)toast(e.message);}
+}
+
 function readAuthHash(){
   const h=new URLSearchParams(location.hash.replace(/^#/,"")),t=h.get("session");
   if(t){session=t;localStorage.setItem("foggy_skin_session",t);history.replaceState(null,"",location.pathname+location.search);}
@@ -338,7 +422,7 @@ async function refreshMe(){
   try{await api("/health");$("apiStatus").textContent="Skin API online";$("apiStatus").className="status good";}
   catch{$("apiStatus").textContent="Skin API unreachable";$("apiStatus").className="status bad";}
   if(!session){me=null;cloudLibrary={skins:[],lastApplied:null};activeCloudId="";renderCloudLibrary();setCloudStatus("Sign in with Steam to sync saved skins","");$("accountTitle").textContent="Steam not linked";$("accountDetail").textContent="Sign in once. No client files or commands required.";$("steamButton").textContent="Sign in with Steam";return;}
-  try{me=await api("/api/me");$("accountTitle").textContent="Steam linked";$("accountDetail").textContent="SteamID64 "+me.steam;$("steamButton").textContent="Sign out";loadCachedCloudLibrary();refreshCloudLibrary(true);}
+  try{me=await api("/api/me");$("accountTitle").textContent="Steam linked";$("accountDetail").textContent="SteamID64 "+me.steam;$("steamButton").textContent="Sign out";loadCachedCloudLibrary();refreshCloudLibrary(true);refreshApplyHistory(true);}
   catch{session="";localStorage.removeItem("foggy_skin_session");me=null;refreshMe();}
 }
 let statusRefreshBusy=false;
@@ -359,32 +443,56 @@ async function refreshServerStatus(){
   }
 }
 async function pollApply(id){
-  const o=$("result");
-  for(let i=0;i<24;i++){
+  const token=++applyPollToken,o=$("result");
+  for(let i=0;i<60&&token===applyPollToken;i++){
     await new Promise(r=>setTimeout(r,1000));
-    try{const d=await api("/api/skins/status/"+encodeURIComponent(id));
-      if(d.status==="applied"){o.textContent=d.message||"Skin applied.";o.className="result show ok";setTimeout(()=>refreshCloudLibrary(true),1500);return;}
-      if(d.status==="failed"){o.textContent=d.message||"Skin apply failed.";o.className="result show err";return;}
-    }catch{}
+    try{
+      const d=await api("/api/skins/status/"+encodeURIComponent(id));
+      renderApplyStatus(d);
+      if(d.status==="applied"){
+        o.textContent=d.message||"Skin applied.";o.className="result show ok";
+        setTimeout(()=>refreshCloudLibrary(true),1500);refreshApplyHistory(true);return;
+      }
+      if(d.status==="failed"||d.status==="superseded"){
+        o.textContent=d.message||(d.status==="superseded"?"A newer Apply request replaced this one.":"Skin apply failed.");
+        o.className="result show err";refreshApplyHistory(true);return;
+      }
+      o.textContent=applyStageNote(d);o.className="result show";
+    }catch(e){
+      if(i>8){o.textContent="Status check interrupted. The request may still complete on the server.";o.className="result show";}
+    }
   }
-  o.textContent="Request reached the web API but no UE4SS confirmation arrived.";o.className="result show err";
+  if(token!==applyPollToken)return;
+  o.textContent="No final UE4SS confirmation yet. The request remains in Recent Apply requests so you can refresh its status.";
+  o.className="result show";
+  refreshApplyHistory(true);
 }
 async function applySkin(){
   const o=$("result");
   if(!API_READY){o.textContent="Railway backend is not connected.";o.className="result show err";return;}
   if(!me){location.href=API+"/auth/steam";return;}
-  const b=$("apply");b.disabled=true;o.textContent="Sending skin to your server…";o.className="result show";
+  if(!bridgeOnline){o.textContent="FOGGY server bridge is offline or the server is restarting.";o.className="result show err";return;}
+  const b=$("apply");b.disabled=true;
+  const localId="sending-"+Date.now();activeApplyId=localId;
+  renderApplyStatus({id:localId,status:"sending",species:selected.slug,patternIndex,createdAt:Date.now(),bridgeOnline});
+  o.textContent="Sending skin to Railway…";o.className="result show";
   try{
     const d=await api("/api/skins/apply",{method:"POST",body:JSON.stringify({
       species:selected.slug,patternIndex,skinVariation,themeIndex:0,colors
     })});
-    o.textContent="Request queued. Waiting for the Evrima server…";pollApply(d.id);
-  }catch(e){o.textContent=e.message;o.className="result show err";}
-  finally{b.disabled=false;}
+    activeApplyId=d.id;
+    const first={...d,id:d.id,status:d.status||"queued",species:selected.slug,patternIndex,createdAt:d.createdAt||Date.now(),bridgeOnline:true};
+    renderApplyStatus(first);
+    o.textContent="Railway received the skin request. Waiting for the FOGGY bridge…";
+    pollApply(d.id);
+  }catch(e){
+    renderApplyStatus({id:localId,status:"failed",species:selected.slug,patternIndex,createdAt:Date.now(),completedAt:Date.now(),message:e.message,bridgeOnline});
+    o.textContent=e.message;o.className="result show err";
+  }finally{b.disabled=false;}
 }
 
 
-buildSpecies();buildColors();buildPresets();refreshSaved();renderCloudLibrary();readAuthHash();renderAll();refreshMe();refreshServerStatus();
+buildSpecies();buildColors();buildPresets();refreshSaved();renderCloudLibrary();renderApplyHistory();readAuthHash();renderAll();refreshMe();refreshServerStatus();
 setInterval(refreshServerStatus,10000);
 
 $("species").onchange=e=>{pushHistory();selected=SPECIES.find(s=>s.slug===e.target.value)||SPECIES[0];patternIndex=0;renderAll();};
@@ -405,6 +513,7 @@ $("importCode").onclick=()=>importCode($("shareCode").value);
 $("undo").onclick=()=>{if(!history.length)return;future.push(snapshot());restore(history.pop());};
 $("redo").onclick=()=>{if(!future.length)return;history.push(snapshot());restore(future.pop());};
 $("apply").onclick=applySkin;
+$("refreshApplyHistory").onclick=()=>refreshApplyHistory(false);
 $("steamButton").onclick=()=>{if(me){session="";me=null;localStorage.removeItem("foggy_skin_session");refreshMe();}else if(API_READY)location.href=API+"/auth/steam";else toast("Railway backend is not connected");};
 
 function emitSettings(){

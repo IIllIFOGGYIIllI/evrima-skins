@@ -1,3 +1,13 @@
+## Web v0.9.1 / API v0.7.1 — Live Apply Status
+
+- Adds a five-stage Apply tracker: Sending, Railway, Bridge, UE4SS handoff, Applied.
+- Adds authenticated recent Apply history plus browser-local history.
+- Adds lifecycle timestamps for queued, bridge delivery, UE4SS acceptance and completion.
+- Shows bridge-offline/restarting context while a request is pending.
+- Rejects new Apply requests server-side when the bridge heartbeat is offline.
+- Preserves the working UE4SS mod, bridge, cloud library and v0.8.3 preview pipeline.
+- Does not invent a separate “player found” stage because the current UE4SS worker only reports the final server-side result.
+
 ## Web v0.9.0 / API v0.7.0 / Bridge v0.7.0 — Steam Cloud Skin Library
 
 - Adds a SteamID-scoped server-backed saved skin library with up to 50 skins per account.

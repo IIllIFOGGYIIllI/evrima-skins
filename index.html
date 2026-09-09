@@ -16,7 +16,7 @@
 </script>
 
 <style>
-/* v0.9.0 Steam-linked cloud library */
+/* v0.9.1 Steam cloud library + live Apply status */
 .cloud-library{border-color:#5b5736;background:linear-gradient(180deg,rgba(25,27,18,.74),rgba(10,14,10,.5))}
 .cloud-library .section-head{gap:10px}
 .cloud-library .quick-actions{display:flex;gap:6px;flex-wrap:wrap}
@@ -24,6 +24,33 @@
 .cloud-actions button{min-width:0}
 #cloudLibraryStatus.good{color:#a9c985}#cloudLibraryStatus.warn{color:#d5b866}#cloudLibraryStatus.bad{color:#d58072}
 @media(max-width:720px){.cloud-actions{grid-template-columns:repeat(2,minmax(0,1fr))}.cloud-library .section-head{align-items:flex-start;flex-direction:column}}
+
+/* v0.9.1 live Apply status */
+.apply-live{margin-top:10px;border:1px solid #41463b;background:rgba(8,12,8,.62);padding:10px;display:none;gap:8px}
+.apply-live.show{display:grid}
+.apply-live-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.apply-live-head strong{font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.apply-live-head span{font-size:9px;color:#9ca395;text-align:right}
+.apply-steps{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px}
+.apply-step{border:1px solid #343a31;padding:7px 5px;text-align:center;font-size:8px;color:#737b70;background:rgba(13,17,12,.72)}
+.apply-step.done{border-color:#596746;color:#b8cb9d;background:rgba(56,73,42,.22)}
+.apply-step.active{border-color:#b69b4c;color:#ead58b;background:rgba(128,105,37,.2)}
+.apply-step.failed{border-color:#7c3d35;color:#e29a8d;background:rgba(105,40,33,.22)}
+.apply-live-note{font-size:9px;color:#a5aa9f;line-height:1.45}
+.apply-history{margin-top:10px;border-top:1px solid #343a31;padding-top:9px}
+.apply-history-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:7px}
+.apply-history-head strong{font-size:9px;letter-spacing:.08em;text-transform:uppercase}
+.apply-history-list{display:grid;gap:5px}
+.apply-history-item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:7px 8px;border:1px solid #30352d;background:rgba(10,14,9,.5)}
+.apply-history-main{min-width:0}
+.apply-history-title{display:block;font-size:9px;color:#d6d8d1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.apply-history-meta{display:block;font-size:8px;color:#7f887c;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.apply-history-badge{font-size:8px;align-self:start;padding:3px 5px;border:1px solid #444b40;color:#aeb5aa}
+.apply-history-badge.ok{border-color:#526847;color:#b8cfaa}
+.apply-history-badge.err{border-color:#713d37;color:#e19c90}
+.apply-history-badge.wait{border-color:#756438;color:#d9c478}
+@media(max-width:720px){.apply-steps{grid-template-columns:1fr}.apply-history-item{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
@@ -37,7 +64,7 @@
   <div class="statuses">
     <span id="apiStatus" class="status warn">API checking…</span>
     <span id="serverStatus" class="status warn">Bridge checking…</span>
-    <span class="status">Web v0.9.0</span>
+    <span class="status">Web v0.9.1</span>
   </div>
 </header>
 
@@ -126,6 +153,27 @@
       <button id="saveSkin">SAVE SKIN</button>
     </div>
     <div id="result" class="result"></div>
+    <div id="applyLive" class="apply-live">
+      <div class="apply-live-head">
+        <strong id="applyLiveTitle">Apply status</strong>
+        <span id="applyLiveTime"></span>
+      </div>
+      <div class="apply-steps" id="applySteps">
+        <div class="apply-step" data-stage="sending">Sending</div>
+        <div class="apply-step" data-stage="queued">Railway</div>
+        <div class="apply-step" data-stage="delivered">Bridge</div>
+        <div class="apply-step" data-stage="accepted">UE4SS</div>
+        <div class="apply-step" data-stage="applied">Applied</div>
+      </div>
+      <div id="applyLiveNote" class="apply-live-note">No Apply request yet.</div>
+      <div class="apply-history">
+        <div class="apply-history-head">
+          <strong>Recent Apply requests</strong>
+          <button id="refreshApplyHistory" type="button">Refresh</button>
+        </div>
+        <div id="applyHistoryList" class="apply-history-list"></div>
+      </div>
+    </div>
 
     <div class="account-card">
       <div>
@@ -245,6 +293,6 @@
 <div id="toast" class="toast"></div>
 <script src="./config.js"></script>
 <script type="module" src="./viewer3d.js?v=083"></script>
-<script src="./app.js?v=090"></script>
+<script src="./app.js?v=091"></script>
 </body>
 </html>

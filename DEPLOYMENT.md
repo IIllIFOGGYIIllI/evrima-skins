@@ -48,7 +48,7 @@ After the commit finishes deploying:
 
 1. Open the live skin creator.
 2. Hard-refresh with `Ctrl + Shift + R`.
-3. Confirm the header shows **Web v0.9.0**.
+3. Confirm the header shows **Web v0.9.1**.
 4. Test Tyrannosaurus first.
 5. Change Pattern 1 → 2 → 3 and confirm the source texture changes.
 6. Test several different species such as Deinosuchus, Omniraptor, Triceratops and Pteranodon.
