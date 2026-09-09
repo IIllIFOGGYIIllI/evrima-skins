@@ -28,15 +28,49 @@ function allowRate(ip){const now=Date.now(),list=(rate.get(ip)||[]).filter(t=>no
 function openidUrl(){const ret=PUBLIC_BASE_URL+"/auth/steam/callback",p=new URLSearchParams({"openid.ns":"http://specs.openid.net/auth/2.0","openid.mode":"checkid_setup","openid.return_to":ret,"openid.realm":PUBLIC_BASE_URL,"openid.identity":"http://specs.openid.net/auth/2.0/identifier_select","openid.claimed_id":"http://specs.openid.net/auth/2.0/identifier_select"});return"https://steamcommunity.com/openid/login?"+p}
 async function verifySteam(url){const p=new URLSearchParams(url.searchParams);p.set("openid.mode","check_authentication");const r=await fetch("https://steamcommunity.com/openid/login",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:p.toString()});const txt=await r.text();if(!/is_valid\s*:\s*true/i.test(txt))return null;const claimed=url.searchParams.get("openid.claimed_id")||"",m=claimed.match(/\/id\/(\d{17})$/);return m?m[1]:null}
 
+const ASSET_HOST="islepilot.eu";
+const ASSET_PREFIX="/cdn/skinviewer/";
+const ASSET_MAX_BYTES=64*1024*1024;
+function assetSource(raw){
+  try{
+    const u=new URL(String(raw||""));
+    if(u.protocol!=="https:"||u.hostname!==ASSET_HOST||u.username||u.password)return null;
+    if(!u.pathname.startsWith(ASSET_PREFIX)||!/[.](?:glb|png|webp)$/i.test(u.pathname))return null;
+    u.hash="";return u;
+  }catch{return null}
+}
+async function proxyAsset(url,res){
+  const src=assetSource(url.searchParams.get("url"));
+  if(!src)return send(res,400,{error:"Invalid Evrima asset URL"});
+  let upstream;
+  try{upstream=await fetch(src,{headers:{Accept:"*/*","User-Agent":"FOGGY-Evrima-Skin-Studio/0.8.1"},signal:AbortSignal.timeout(25000)})}
+  catch(e){console.error("[FOGGY API] asset upstream failed",src.pathname,e);return send(res,502,{error:"Evrima asset upstream unavailable"})}
+  if(!upstream.ok)return send(res,upstream.status===404?404:502,{error:`Evrima asset upstream ${upstream.status}`});
+  const declared=Number(upstream.headers.get("content-length")||0);
+  if(declared>ASSET_MAX_BYTES)return send(res,413,{error:"Evrima asset too large"});
+  const body=Buffer.from(await upstream.arrayBuffer());
+  if(body.length>ASSET_MAX_BYTES)return send(res,413,{error:"Evrima asset too large"});
+  const headers={
+    "Content-Type":upstream.headers.get("content-type")||"application/octet-stream",
+    "Content-Length":body.length,
+    "Cache-Control":"public, max-age=86400, stale-while-revalidate=604800",
+    "X-Content-Type-Options":"nosniff"
+  };
+  const etag=upstream.headers.get("etag"),last=upstream.headers.get("last-modified");
+  if(etag)headers.ETag=etag;if(last)headers["Last-Modified"]=last;
+  res.writeHead(200,headers);res.end(body);
+}
+
 const app=http.createServer(async(req,res)=>{
   cors(req,res);if(req.method==="OPTIONS"){res.writeHead(204);return res.end()}
   const url=new URL(req.url,PUBLIC_BASE_URL||`http://${req.headers.host||"localhost"}`);
   try{
-    if(req.method==="GET"&&url.pathname==="/health")return send(res,200,{ok:true,service:"FOGGY Evrima Skin API",version:"0.5.0"});
+    if(req.method==="GET"&&url.pathname==="/health")return send(res,200,{ok:true,service:"FOGGY Evrima Skin API",version:"0.6.0"});
     if(req.method==="GET"&&url.pathname==="/auth/steam"){if(!PUBLIC_BASE_URL||!SESSION_SECRET)return send(res,503,{error:"Steam auth is not configured"});res.writeHead(302,{Location:openidUrl(),"Cache-Control":"no-store"});return res.end()}
     if(req.method==="GET"&&url.pathname==="/auth/steam/callback"){const steam=await verifySteam(url);if(!steam){res.writeHead(302,{Location:FRONTEND_URL+"#auth=failed"});return res.end()}res.writeHead(302,{Location:FRONTEND_URL+"#session="+encodeURIComponent(signSession(steam)),"Cache-Control":"no-store"});return res.end()}
     if(req.method==="GET"&&url.pathname==="/api/me"){const u=user(req);if(!u)return send(res,401,{error:"Steam sign-in required"});return send(res,200,{steam:u.steam})}
     if(req.method==="GET"&&url.pathname==="/api/public/status")return send(res,200,{server:SERVER_ID,online:Date.now()-lastHeartbeat<15000,lastHeartbeat:lastHeartbeat||null});
+    if(req.method==="GET"&&url.pathname==="/api/assets")return proxyAsset(url,res);
 
     if(req.method==="POST"&&url.pathname==="/api/skins/apply"){
       const u=user(req);if(!u)return send(res,401,{error:"Steam sign-in required"});

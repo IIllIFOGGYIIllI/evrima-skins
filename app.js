@@ -22,7 +22,7 @@ detail:"#49504A",breed:"#687A5A",eyes:"#D59B36",teeth:"#D8CFAC",
 mouth:"#6B3037",claws:"#333333"
 };
 
-const HQ_AVAILABLE=new Set(["tyrannosaurus", "allosaurus", "austroraptor", "carnotaurus", "ceratosaurus", "deinosuchus", "dilophosaurus", "herrerasaurus", "omniraptor", "pteranodon", "troodon", "triceratops", "stegosaurus", "diabloceratops", "kentrosaurus", "tenontosaurus", "maiasaura", "pachycephalosaurus", "dryosaurus", "hypsilophodon", "gallimimus", "beipiaosaurus"]);
+const HQ_AVAILABLE=new Set(["allosaurus","beipiaosaurus","carnotaurus","ceratosaurus","deinosuchus","diabloceratops","dilophosaurus","dryosaurus","gallimimus","herrerasaurus","hypsilophodon","kentrosaurus","maiasaura","omniraptor","pachycephalosaurus","pteranodon","stegosaurus","tenontosaurus","triceratops","troodon","tyrannosaurus"]);
 
 let colors={...DEFAULTS};
 let selected=SPECIES[0],patternIndex=0,skinVariation=1,themeIndex=0,previewSex="male";
@@ -144,16 +144,16 @@ function renderPreviewMode(){
   $("viewerShell").classList.toggle("mode-hq",previewMode==="hq");
   const title=$("fidelityTitle"),text=$("fidelityText");
   if(previewMode==="hq"){
-    title.textContent="HQ 3D preview";
-    text.textContent="Species-specific Evrima-style GLB preview. Original texture detail is preserved where available and your live colours are tinted over the exact species model.";
+    title.textContent="Evrima-source 3D preview";
+    text.textContent="Species-specific Evrima-source model with the researched pattern/RAC/normal compositing pipeline. Pattern variation still applies in-game; its exact browser transform is intentionally not guessed.";
     $("viewerHint").textContent="Drag to rotate · wheel to zoom";
   }else if(previewMode==="skin3d"){
-    title.textContent="Skin Map 3D preview";
-    text.textContent="Species-specific 3D colour preview. This mode uses the exact species mesh and applies all ten creator colours more aggressively for clearer design feedback.";
+    title.textContent="Evrima colour-map 3D";
+    text.textContent="Same verified species model and source pattern maps, rendered as an interactive browser preview. No generic dinosaur proxy is used.";
     $("viewerHint").textContent="Drag to rotate · wheel to zoom";
   }else{
-    title.textContent="Skin 2D preview";
-    text.textContent="Fixed side-on render of the selected species so you can preview colours without moving the camera.";
+    title.textContent="Evrima side view";
+    text.textContent="Fixed side-on view of the same verified species model and composited skin.";
     $("viewerHint").textContent="Fixed side-on skin preview";
   }
 }

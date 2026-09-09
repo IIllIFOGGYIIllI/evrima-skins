@@ -26,7 +26,7 @@
   <div class="statuses">
     <span id="apiStatus" class="status warn">API checking…</span>
     <span id="serverStatus" class="status warn">Bridge checking…</span>
-    <span class="status">Web v0.8.0</span>
+    <span class="status">Web v0.8.1</span>
   </div>
 </header>
 
@@ -64,9 +64,9 @@
         <span id="viewerSpecies">Tyrannosaurus</span>
         <div class="viewer-actions">
           <div id="previewModeTabs" class="preview-mode-tabs">
-            <button data-preview-mode="hq" class="tiny">HQ 3D</button>
-            <button data-preview-mode="skin3d" class="tiny active">Skin Map 3D</button>
-            <button data-preview-mode="2d" class="tiny">Skin 2D</button>
+            <button data-preview-mode="hq" class="tiny">EVRIMA 3D</button>
+            <button data-preview-mode="skin3d" class="tiny active">COLOUR 3D</button>
+            <button data-preview-mode="2d" class="tiny">SIDE VIEW</button>
           </div>
           <button id="resetCamera" class="tiny">Reset camera</button>
         </div>
@@ -107,7 +107,7 @@
 
     <div class="preview-fidelity">
       <strong id="fidelityTitle">HQ 3D preview</strong>
-      <span id="fidelityText">Species-specific Evrima-style 3D preview foundation. HQ 3D uses the exact species model where available; Skin Map 3D remains the stronger colour-feedback view.</span>
+      <span id="fidelityText">Researched Evrima-source preview: verified species GLB + source pattern, RAC and normal-map compositing through the Railway asset proxy.</span>
     </div>
 
     <div class="apply-row">
@@ -203,13 +203,13 @@
 </main>
 
 <footer>
-  FOGGY Evrima PvE · species-specific browser 3D preview foundation · if a species model fails it falls back to the Evrima reference image
+  FOGGY Evrima PvE · researched Evrima-source 3D previews · unverified species use the reference image rather than a fake proxy
 </footer>
 </div>
 
 <div id="toast" class="toast"></div>
 <script src="./config.js"></script>
-<script type="module" src="./viewer3d.js?v=080"></script>
-<script src="./app.js?v=072"></script>
+<script type="module" src="./viewer3d.js?v=081"></script>
+<script src="./app.js?v=081"></script>
 </body>
 </html>
