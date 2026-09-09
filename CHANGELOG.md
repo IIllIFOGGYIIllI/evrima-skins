@@ -1,3 +1,15 @@
+## Web v0.9.2 / API v0.7.2 / Bridge v0.7.1 / UE4SS v0.6.2 — Multiplayer Hardening
+
+- Adds one in-flight Apply per Steam account while preserving concurrent Applies for different players.
+- Adds per-Steam Apply/library rate limits and idempotent Apply nonces.
+- Strictly validates species-specific pattern ranges, variation, disabled ThemeIndex and all colours.
+- Adds server-ID binding to bridge ACK/result/library-result calls.
+- Adds persistent bridge replay protection so a lost ACK cannot apply the same request twice.
+- Makes cloud delete idempotent and fixes library command-ID/skin-ID separation.
+- Ignores stale/duplicate terminal result uploads.
+- Adds live dinosaur species mismatch rejection in UE4SS.
+- Preserves the single UE4SS worker, persistence, cloud library and v0.8.3 preview pipeline.
+
 ## Web v0.9.1 / API v0.7.1 — Live Apply Status
 
 - Adds a five-stage Apply tracker: Sending, Railway, Bridge, UE4SS handoff, Applied.

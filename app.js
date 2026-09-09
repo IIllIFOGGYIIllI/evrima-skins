@@ -33,7 +33,7 @@ let session=localStorage.getItem("foggy_skin_session")||"",me=null;
 let history=[],future=[],historyLock=false;
 let cloudLibrary={skins:[],lastApplied:null},activeCloudId="",bridgeOnline=false,cloudBusy=false;
 const APPLY_HISTORY_KEY="foggy_apply_history_v1";
-let activeApplyId="",activeApplyData=null,applyPollToken=0;
+let activeApplyId="",activeApplyData=null,applyPollToken=0,applyBusy=false;
 const $=id=>document.getElementById(id);
 
 function toast(m){
@@ -261,7 +261,7 @@ async function api(path,opt={}){
   try{
     const r=await fetch(API+path,{...opt,headers,signal:controller.signal});let d={};
     try{d=await r.json();}catch{}
-    if(!r.ok)throw Error(d.error||`Request failed (${r.status})`);
+    if(!r.ok){const e=Error(d.error||`Request failed (${r.status})`);e.status=r.status;e.data=d;throw e;}
     return d;
   }catch(e){
     if(e?.name==="AbortError")throw Error("Skin API timed out");
@@ -442,53 +442,65 @@ async function refreshServerStatus(){
     statusRefreshBusy=false;
   }
 }
+function setApplyBusy(on){applyBusy=Boolean(on);const b=$("apply");if(b)b.disabled=applyBusy;}
 async function pollApply(id){
-  const token=++applyPollToken,o=$("result");
-  for(let i=0;i<60&&token===applyPollToken;i++){
-    await new Promise(r=>setTimeout(r,1000));
-    try{
-      const d=await api("/api/skins/status/"+encodeURIComponent(id));
-      renderApplyStatus(d);
-      if(d.status==="applied"){
-        o.textContent=d.message||"Skin applied.";o.className="result show ok";
-        setTimeout(()=>refreshCloudLibrary(true),1500);refreshApplyHistory(true);return;
+  const token=++applyPollToken,o=$("result");setApplyBusy(true);
+  try{
+    for(let i=0;i<125&&token===applyPollToken;i++){
+      await new Promise(r=>setTimeout(r,1000));
+      try{
+        const d=await api("/api/skins/status/"+encodeURIComponent(id));
+        renderApplyStatus(d);
+        if(d.status==="applied"){
+          o.textContent=d.message||"Skin applied.";o.className="result show ok";
+          setTimeout(()=>refreshCloudLibrary(true),1500);refreshApplyHistory(true);return;
+        }
+        if(d.status==="failed"||d.status==="superseded"){
+          o.textContent=d.message||(d.status==="superseded"?"A newer Apply request replaced this one.":"Skin apply failed.");
+          o.className="result show err";refreshApplyHistory(true);return;
+        }
+        o.textContent=applyStageNote(d);o.className="result show";
+      }catch(e){
+        if(i>8){o.textContent="Status check interrupted. The server still owns this request; waiting for confirmation…";o.className="result show";}
       }
-      if(d.status==="failed"||d.status==="superseded"){
-        o.textContent=d.message||(d.status==="superseded"?"A newer Apply request replaced this one.":"Skin apply failed.");
-        o.className="result show err";refreshApplyHistory(true);return;
-      }
-      o.textContent=applyStageNote(d);o.className="result show";
-    }catch(e){
-      if(i>8){o.textContent="Status check interrupted. The request may still complete on the server.";o.className="result show";}
     }
-  }
-  if(token!==applyPollToken)return;
-  o.textContent="No final UE4SS confirmation yet. The request remains in Recent Apply requests so you can refresh its status.";
-  o.className="result show";
-  refreshApplyHistory(true);
+    if(token!==applyPollToken)return;
+    o.textContent="No final confirmation arrived before the safety window ended. Refresh Recent Apply requests before retrying.";
+    o.className="result show";refreshApplyHistory(true);
+  }finally{if(token===applyPollToken)setApplyBusy(false);}
 }
 async function applySkin(){
   const o=$("result");
+  if(applyBusy){toast("An Apply request is already in progress");return;}
   if(!API_READY){o.textContent="Railway backend is not connected.";o.className="result show err";return;}
   if(!me){location.href=API+"/auth/steam";return;}
   if(!bridgeOnline){o.textContent="FOGGY server bridge is offline or the server is restarting.";o.className="result show err";return;}
-  const b=$("apply");b.disabled=true;
-  const localId="sending-"+Date.now();activeApplyId=localId;
+  setApplyBusy(true);
+  const clientNonce=cloudUuid(),localId="sending-"+Date.now();activeApplyId=localId;
   renderApplyStatus({id:localId,status:"sending",species:selected.slug,patternIndex,createdAt:Date.now(),bridgeOnline});
   o.textContent="Sending skin to Railway…";o.className="result show";
+  const body=JSON.stringify({clientNonce,species:selected.slug,patternIndex,skinVariation,themeIndex:0,colors});
   try{
-    const d=await api("/api/skins/apply",{method:"POST",body:JSON.stringify({
-      species:selected.slug,patternIndex,skinVariation,themeIndex:0,colors
-    })});
+    let d;
+    try{d=await api("/api/skins/apply",{method:"POST",body});}
+    catch(e){
+      if(e.message==="Skin API timed out"){await new Promise(r=>setTimeout(r,700));d=await api("/api/skins/apply",{method:"POST",body});}
+      else throw e;
+    }
     activeApplyId=d.id;
-    const first={...d,id:d.id,status:d.status||"queued",species:selected.slug,patternIndex,createdAt:d.createdAt||Date.now(),bridgeOnline:true};
+    const first={...d,id:d.id,status:d.status||"queued",species:d.species||selected.slug,patternIndex:Number(d.patternIndex??patternIndex),createdAt:d.createdAt||Date.now(),bridgeOnline:true};
     renderApplyStatus(first);
-    o.textContent="Railway received the skin request. Waiting for the FOGGY bridge…";
+    o.textContent=d.deduplicated?"Recovered the existing Apply request. Waiting for the server…":"Railway received the skin request. Waiting for the FOGGY bridge…";
     pollApply(d.id);
   }catch(e){
+    if(e.status===409&&e.data?.active?.id){
+      const d=e.data.active;activeApplyId=d.id;renderApplyStatus(d);
+      o.textContent="Your previous Apply request is still in progress. Resuming its status instead of creating a duplicate.";o.className="result show";
+      pollApply(d.id);return;
+    }
     renderApplyStatus({id:localId,status:"failed",species:selected.slug,patternIndex,createdAt:Date.now(),completedAt:Date.now(),message:e.message,bridgeOnline});
-    o.textContent=e.message;o.className="result show err";
-  }finally{b.disabled=false;}
+    o.textContent=e.message;o.className="result show err";setApplyBusy(false);
+  }
 }
 
 

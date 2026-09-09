@@ -11,7 +11,7 @@ const SERVER_ID=String(process.env.SERVER_ID||"foggy-evrima-pve");
 const FIELDS=["body","markings","flank","underbelly","detail","eyes","breed","teeth","mouth","claws"];
 const commands=new Map(),order=[];
 const libraryCommands=new Map(),libraryOrder=[];
-const rate=new Map(),libraryRate=new Map();
+const rate=new Map(),steamApplyRate=new Map(),libraryRate=new Map(),steamLibraryRate=new Map();
 let lastHeartbeat=0;
 
 function send(res,status,obj,headers={}){
@@ -41,17 +41,35 @@ function normalizeLibrarySkin(raw){
   const colors={};for(const f of FIELDS){const h=cleanHex(raw.colors&&raw.colors[f]);if(!h)return{error:`Invalid ${f} colour`};colors[f]=h}
   return{skin:{id,name,species,patternIndex:Math.max(0,Math.min(count-1,Math.floor(Number(raw.patternIndex)||0))),skinVariation:Math.max(0,Math.min(2,Math.floor(Number(raw.skinVariation)||0))),themeIndex:0,previewSex:raw.previewSex==="female"?"female":"male",colors}};
 }
-function prune(){const cutoff=Date.now()-15*60*1000;for(const [id,c] of commands)if(c.createdAt<cutoff)commands.delete(id);while(order.length&&!commands.has(order[0]))order.shift();if(order.length>500)order.splice(0,order.length-500)}
+const APPLY_PENDING_MAX_MS=120000;
+const APPLY_TERMINAL=new Set(["applied","failed","superseded"]);
+function prune(){
+  const now=Date.now(),cutoff=now-15*60*1000;
+  for(const c of commands.values()){
+    if(!APPLY_TERMINAL.has(c.status)&&now-c.createdAt>APPLY_PENDING_MAX_MS){
+      c.status="failed";c.completedAt=now;c.message="Apply request expired before final server confirmation. Try Apply again.";
+    }
+  }
+  for(const [id,c] of commands)if(c.createdAt<cutoff)commands.delete(id);
+  while(order.length&&!commands.has(order[0]))order.shift();if(order.length>500)order.splice(0,order.length-500)
+}
 function bridgeIsOnline(){return Date.now()-lastHeartbeat<15000}
 function skinStatusPayload(c){
   return{id:c.id,status:c.status,message:c.message,species:c.species,patternIndex:c.patternIndex,skinVariation:c.skinVariation,
-    createdAt:c.createdAt,completedAt:c.completedAt||0,bridgeOnline:bridgeIsOnline(),
+    createdAt:c.createdAt,completedAt:c.completedAt||0,bridgeOnline:bridgeIsOnline(),clientNonce:c.clientNonce||null,
     timeline:{queuedAt:c.createdAt||0,deliveredAt:c.firstDeliveredAt||c.deliveredAt||0,acceptedAt:c.acceptedAt||0,completedAt:c.completedAt||0,supersededAt:c.supersededAt||0}};
 }
+function activeApplyForSteam(steam){prune();for(let i=order.length-1;i>=0;i--){const c=commands.get(order[i]);if(c&&c.steam===steam&&!APPLY_TERMINAL.has(c.status))return c}return null}
+function commandByNonce(steam,nonce){if(!nonce)return null;for(let i=order.length-1;i>=0;i--){const c=commands.get(order[i]);if(c&&c.steam===steam&&c.clientNonce===nonce)return c}return null}
+function cleanClientNonce(v){if(v===undefined||v===null||v==="")return null;return cleanUuid(v)}
+function requireServerBody(b){return String(b&&b.server||"")===SERVER_ID}
 function pruneLibrary(){const cutoff=Date.now()-15*60*1000;for(const [id,c] of libraryCommands)if(c.createdAt<cutoff)libraryCommands.delete(id);while(libraryOrder.length&&!libraryCommands.has(libraryOrder[0]))libraryOrder.shift();if(libraryOrder.length>500)libraryOrder.splice(0,libraryOrder.length-500)}
 function queueLibraryCommand(steam,action,payload={},clientVisible=true){const id=crypto.randomUUID(),c={id,steam:String(steam),action,payload,status:"queued",message:"Queued",data:null,clientVisible,createdAt:Date.now(),deliveredAt:0};libraryCommands.set(id,c);libraryOrder.push(id);pruneLibrary();return c}
-function allowRate(ip){const now=Date.now(),list=(rate.get(ip)||[]).filter(t=>now-t<60000);if(list.length>=30)return false;list.push(now);rate.set(ip,list);return true}
-function allowLibraryRate(ip){const now=Date.now(),list=(libraryRate.get(ip)||[]).filter(t=>now-t<60000);if(list.length>=60)return false;list.push(now);libraryRate.set(ip,list);return true}
+function allowBucket(map,key,limit){const now=Date.now(),list=(map.get(key)||[]).filter(t=>now-t<60000);if(list.length>=limit)return false;list.push(now);map.set(key,list);return true}
+function allowRate(ip){return allowBucket(rate,ip,30)}
+function allowSteamApply(steam){return allowBucket(steamApplyRate,steam,8)}
+function allowLibraryRate(ip){return allowBucket(libraryRate,ip,60)}
+function allowSteamLibrary(steam){return allowBucket(steamLibraryRate,steam,40)}
 function openidUrl(){const ret=PUBLIC_BASE_URL+"/auth/steam/callback",p=new URLSearchParams({"openid.ns":"http://specs.openid.net/auth/2.0","openid.mode":"checkid_setup","openid.return_to":ret,"openid.realm":PUBLIC_BASE_URL,"openid.identity":"http://specs.openid.net/auth/2.0/identifier_select","openid.claimed_id":"http://specs.openid.net/auth/2.0/identifier_select"});return"https://steamcommunity.com/openid/login?"+p}
 async function verifySteam(url){const p=new URLSearchParams(url.searchParams);p.set("openid.mode","check_authentication");const r=await fetch("https://steamcommunity.com/openid/login",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:p.toString()});const txt=await r.text();if(!/is_valid\s*:\s*true/i.test(txt))return null;const claimed=url.searchParams.get("openid.claimed_id")||"",m=claimed.match(/\/id\/(\d{17})$/);return m?m[1]:null}
 
@@ -222,7 +240,7 @@ const app=http.createServer(async(req,res)=>{
   cors(req,res);if(req.method==="OPTIONS"){res.writeHead(204);return res.end()}
   const url=new URL(req.url,PUBLIC_BASE_URL||`http://${req.headers.host||"localhost"}`);
   try{
-    if(req.method==="GET"&&url.pathname==="/health")return send(res,200,{ok:true,service:"FOGGY Evrima Skin API",version:"0.7.1"});
+    if(req.method==="GET"&&url.pathname==="/health")return send(res,200,{ok:true,service:"FOGGY Evrima Skin API",version:"0.7.2"});
     if(req.method==="GET"&&url.pathname==="/auth/steam"){if(!PUBLIC_BASE_URL||!SESSION_SECRET)return send(res,503,{error:"Steam auth is not configured"});res.writeHead(302,{Location:openidUrl(),"Cache-Control":"no-store"});return res.end()}
     if(req.method==="GET"&&url.pathname==="/auth/steam/callback"){const steam=await verifySteam(url);if(!steam){res.writeHead(302,{Location:FRONTEND_URL+"#auth=failed"});return res.end()}res.writeHead(302,{Location:FRONTEND_URL+"#session="+encodeURIComponent(signSession(steam)),"Cache-Control":"no-store"});return res.end()}
     if(req.method==="GET"&&url.pathname==="/api/me"){const u=user(req);if(!u)return send(res,401,{error:"Steam sign-in required"});return send(res,200,{steam:u.steam})}
@@ -237,17 +255,21 @@ const app=http.createServer(async(req,res)=>{
     if(req.method==="POST"&&url.pathname==="/api/skins/apply"){
       const u=user(req);if(!u)return send(res,401,{error:"Steam sign-in required"});
       if(!bridgeIsOnline())return send(res,503,{error:"FOGGY server bridge is offline or the server is restarting"});
-      if(!allowRate(req.socket.remoteAddress||"unknown"))return send(res,429,{error:"Too many skin requests. Try again in a minute."});
       const b=await readBody(req),colors={};
+      const clientNonce=cleanClientNonce(b.clientNonce);if(b.clientNonce&&!clientNonce)return send(res,400,{error:"Invalid Apply request nonce"});
+      const duplicate=commandByNonce(u.steam,clientNonce);if(duplicate)return send(res,202,{ok:true,deduplicated:true,...skinStatusPayload(duplicate)});
+      const active=activeApplyForSteam(u.steam);if(active)return send(res,409,{error:"An Apply request is already in progress for your Steam account",active:skinStatusPayload(active)});
+      if(!allowRate(req.socket.remoteAddress||"unknown")||!allowSteamApply(u.steam))return send(res,429,{error:"Too many Apply requests. Wait a moment and try again."});
+      const species=String(b.species||"").toLowerCase(),patternCount=SPECIES_PATTERNS[species];
+      if(!patternCount)return send(res,400,{error:"Unknown or unsupported species"});
+      const patternIndex=Number(b.patternIndex),skinVariation=Number(b.skinVariation),themeIndex=Number(b.themeIndex??0);
+      if(!Number.isInteger(patternIndex)||patternIndex<0||patternIndex>=patternCount)return send(res,400,{error:`Pattern ${Number.isFinite(patternIndex)?patternIndex+1:"?"} is invalid for ${species}`});
+      if(!Number.isInteger(skinVariation)||skinVariation<0||skinVariation>2)return send(res,400,{error:"Skin variation must be 0, 1 or 2"});
+      if(themeIndex!==0)return send(res,400,{error:"ThemeIndex is disabled on this server"});
       for(const f of FIELDS){const h=cleanHex(b.colors&&b.colors[f]);if(!h)return send(res,400,{error:`Invalid ${f} colour`});colors[f]=h.slice(1)}
       const id=crypto.randomUUID();
-      for(const old of commands.values())if(old.steam===u.steam&&!["applied","failed","superseded"].includes(old.status)){old.status="superseded";old.message="Superseded by a newer request";old.supersededAt=Date.now();old.completedAt=old.supersededAt}
-      const species=String(b.species||"").toLowerCase();
-      const patternIndex=Math.max(0,Math.min(4,Math.floor(Number(b.patternIndex)||0)));
-      const skinVariation=Math.max(0,Math.min(2,Math.floor(Number(b.skinVariation)||0)));
-      const themeIndex=Math.max(0,Math.min(1,Math.floor(Number(b.themeIndex)||0)));
-      const c={id,steam:u.steam,server:SERVER_ID,species,patternIndex,skinVariation,themeIndex,colors,status:"queued",message:"Railway received request",createdAt:Date.now(),deliveredAt:0,firstDeliveredAt:0,acceptedAt:0,completedAt:0,supersededAt:0};
-      commands.set(id,c);order.push(id);prune();return send(res,202,{ok:true,id,status:c.status,createdAt:c.createdAt})
+      const c={id,clientNonce,steam:u.steam,server:SERVER_ID,species,patternIndex,skinVariation,themeIndex:0,colors,status:"queued",message:"Railway received request",createdAt:Date.now(),deliveredAt:0,firstDeliveredAt:0,acceptedAt:0,completedAt:0,supersededAt:0};
+      commands.set(id,c);order.push(id);prune();return send(res,202,{ok:true,id,status:c.status,createdAt:c.createdAt,clientNonce})
     }
     const sm=url.pathname.match(/^\/api\/skins\/status\/([0-9a-f-]+)$/i);
     if(req.method==="GET"&&sm){const u=user(req);if(!u)return send(res,401,{error:"Steam sign-in required"});const c=commands.get(sm[1]);if(!c||c.steam!==u.steam)return send(res,404,{error:"Skin request not found"});return send(res,200,skinStatusPayload(c))}
@@ -259,7 +281,7 @@ const app=http.createServer(async(req,res)=>{
 
     if(req.method==="POST"&&url.pathname==="/api/library/op"){
       const u=user(req);if(!u)return send(res,401,{error:"Steam sign-in required"});
-      if(!allowLibraryRate(req.socket.remoteAddress||"unknown"))return send(res,429,{error:"Too many library requests. Try again in a minute."});
+      if(!allowLibraryRate(req.socket.remoteAddress||"unknown")||!allowSteamLibrary(u.steam))return send(res,429,{error:"Too many library requests. Try again in a minute."});
       const b=await readBody(req),action=String(b.action||"").toLowerCase(),payload={};
       if(action==="list"){}
       else if(action==="save"){
@@ -286,32 +308,35 @@ const app=http.createServer(async(req,res)=>{
       if(!serverAuth(req))return send(res,401,{error:"Invalid server bridge token"});
       prune();pruneLibrary();const now=Date.now(),out=[],libraryOut=[];
       for(const id of order){const c=commands.get(id);if(!c)continue;if(c.status==="queued"||(c.status==="delivered"&&now-c.deliveredAt>10000)){c.status="delivered";c.message="FOGGY server bridge received request";c.deliveredAt=now;if(!c.firstDeliveredAt)c.firstDeliveredAt=now;out.push({id:c.id,steam:c.steam,species:c.species,patternIndex:c.patternIndex,skinVariation:c.skinVariation,themeIndex:c.themeIndex,colors:c.colors});if(out.length>=25)break}}
-      for(const id of libraryOrder){const c=libraryCommands.get(id);if(!c)continue;if(c.status==="queued"||(c.status==="delivered"&&now-c.deliveredAt>10000)){c.status="delivered";c.deliveredAt=now;libraryOut.push({id:c.id,steam:c.steam,action:c.action,...c.payload});if(libraryOut.length>=25)break}}
-      return send(res,200,{commands:out,libraryCommands:libraryOut})
+      for(const id of libraryOrder){const c=libraryCommands.get(id);if(!c)continue;if(c.status==="queued"||(c.status==="delivered"&&now-c.deliveredAt>10000)){c.status="delivered";c.deliveredAt=now;libraryOut.push({commandId:c.id,steam:c.steam,action:c.action,...c.payload});if(libraryOut.length>=25)break}}
+      return send(res,200,{server:SERVER_ID,commands:out,libraryCommands:libraryOut})
     }
     if(req.method==="POST"&&url.pathname==="/api/server/ack"){
       if(!serverAuth(req))return send(res,401,{error:"Invalid server bridge token"});
-      const b=await readBody(req);for(const id of Array.isArray(b.ids)?b.ids:[]){const c=commands.get(String(id));if(c&&c.status==="delivered"){c.status="accepted";c.acceptedAt=Date.now();c.message="Queued for UE4SS; waiting for live dinosaur"}}return send(res,200,{ok:true})
+      const b=await readBody(req);if(!requireServerBody(b))return send(res,409,{error:"Server ID mismatch"});
+      for(const id of Array.isArray(b.ids)?b.ids:[]){const c=commands.get(String(id));if(c&&c.status==="delivered"){c.status="accepted";c.acceptedAt=Date.now();c.message="Queued for UE4SS; waiting for live dinosaur"}}return send(res,200,{ok:true})
     }
     if(req.method==="POST"&&url.pathname==="/api/server/result"){
       if(!serverAuth(req))return send(res,401,{error:"Invalid server bridge token"});
-      const b=await readBody(req),c=commands.get(String(b.id||""));
-      if(c&&(!b.steam||String(b.steam)===c.steam)){
-        c.status=b.ok?"applied":"failed";c.completedAt=Date.now();c.message=String(b.message||(b.ok?"Skin applied":"Skin apply failed")).slice(0,300);
-        if(b.ok)queueLibraryCommand(c.steam,"recordapplied",{skin:{id:crypto.randomUUID(),name:`${c.species} Last Applied`,species:c.species,patternIndex:c.patternIndex,skinVariation:c.skinVariation,themeIndex:0,previewSex:"male",colors:Object.fromEntries(Object.entries(c.colors).map(([k,v])=>[k,"#"+String(v).replace(/^#/,"")]))}},false);
-      }
-      return send(res,200,{ok:true})
+      const b=await readBody(req);if(!requireServerBody(b))return send(res,409,{error:"Server ID mismatch"});
+      const c=commands.get(String(b.id||""));if(!c)return send(res,404,{error:"Skin request not found"});
+      if(String(b.steam||"")!==c.steam)return send(res,409,{error:"Steam ownership mismatch"});
+      if(!["delivered","accepted"].includes(c.status))return send(res,200,{ok:true,ignored:true,status:c.status});
+      c.status=b.ok?"applied":"failed";c.completedAt=Date.now();c.message=String(b.message||(b.ok?"Skin applied":"Skin apply failed")).slice(0,300);
+      if(b.ok)queueLibraryCommand(c.steam,"recordapplied",{skin:{id:crypto.randomUUID(),name:`${c.species} Last Applied`,species:c.species,patternIndex:c.patternIndex,skinVariation:c.skinVariation,themeIndex:0,previewSex:"male",colors:Object.fromEntries(Object.entries(c.colors).map(([k,v])=>[k,"#"+String(v).replace(/^#/,"")]))}},false);
+      return send(res,200,{ok:true,status:c.status})
     }
     if(req.method==="POST"&&url.pathname==="/api/server/library/result"){
       if(!serverAuth(req))return send(res,401,{error:"Invalid server bridge token"});
-      const b=await readBody(req),c=libraryCommands.get(String(b.id||""));
-      if(c&&(!b.steam||String(b.steam)===c.steam)){
-        c.status=b.ok?"completed":"failed";c.message=String(b.message||(b.ok?"Library updated":"Library operation failed")).slice(0,300);c.data=b.ok&&b.data!==undefined?b.data:null;
-      }
-      return send(res,200,{ok:true})
+      const b=await readBody(req);if(!requireServerBody(b))return send(res,409,{error:"Server ID mismatch"});
+      const c=libraryCommands.get(String(b.id||""));if(!c)return send(res,404,{error:"Library request not found"});
+      if(String(b.steam||"")!==c.steam)return send(res,409,{error:"Steam ownership mismatch"});
+      if(!["delivered","queued"].includes(c.status))return send(res,200,{ok:true,ignored:true,status:c.status});
+      c.status=b.ok?"completed":"failed";c.message=String(b.message||(b.ok?"Library updated":"Library operation failed")).slice(0,300);c.data=b.ok&&b.data!==undefined?b.data:null;
+      return send(res,200,{ok:true,status:c.status})
     }
     if(req.method==="POST"&&url.pathname==="/api/server/heartbeat"){
-      if(!serverAuth(req))return send(res,401,{error:"Invalid server bridge token"});lastHeartbeat=Date.now();return send(res,200,{ok:true,server:SERVER_ID})
+      if(!serverAuth(req))return send(res,401,{error:"Invalid server bridge token"});const b=await readBody(req);if(!requireServerBody(b))return send(res,409,{error:"Server ID mismatch"});lastHeartbeat=Date.now();return send(res,200,{ok:true,server:SERVER_ID})
     }
     return send(res,404,{error:"Not found"})
   }catch(e){console.error("[FOGGY API]",e);return send(res,500,{error:"Internal server error"})}
