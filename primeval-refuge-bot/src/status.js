@@ -5,7 +5,7 @@ export async function fetchPrimevalStatus(timeoutMs = 5000) {
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch(`${config.apiBase}/api/public/status`, {
-      headers: { "user-agent": "Primeval-Refuge-Bot/0.1.0" },
+      headers: { "user-agent": "Primeval-Refuge-Bot/0.2.0" },
       cache: "no-store",
       signal: controller.signal
     });

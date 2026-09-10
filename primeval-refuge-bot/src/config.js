@@ -19,6 +19,7 @@ export const config = Object.freeze({
   token: required("DISCORD_BOT_TOKEN"),
   clientId: required("DISCORD_CLIENT_ID"),
   guildId: required("DISCORD_GUILD_ID"),
+  botApiToken: required("PRIMEVAL_BOT_API_TOKEN"),
   ownerDiscordId: String(process.env.OWNER_DISCORD_ID || "").trim(),
   websiteUrl: cleanUrl(process.env.PRIMEVAL_WEBSITE_URL, "https://iillifoggyiilli.github.io/evrima-skins/"),
   apiBase: cleanUrl(process.env.PRIMEVAL_API_BASE, "https://evrima-skins-production.up.railway.app"),

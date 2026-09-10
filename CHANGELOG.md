@@ -1,3 +1,10 @@
+## Bot v0.2.0 / API v0.9.0 — Discord ↔ Steam Account Linking
+
+- Adds secure `/link`, `/account` and `/unlink` Discord commands.
+- Steam OpenID remains authoritative; links are one-to-one and persist on Railway volume storage.
+- Adds a dedicated bot-to-API credential and website Discord-link status.
+- Preserves existing Apply, library, publishing, community, bridge and UE4SS behavior.
+
 ## Web v0.10.2 — Primeval Refuge Branding
 
 - Promotes **Primeval Refuge** as the public website/community identity.

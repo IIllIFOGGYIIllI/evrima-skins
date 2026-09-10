@@ -10,9 +10,10 @@ Browser skin creator for **Primeval Refuge**, an Evrima PvE community.
 | --- | --- | --- |
 | Website | **v0.10.2** | Primeval Refuge branding + Studio / Library / Community / Publish |
 | Preview pipeline | **v0.8.3** | Researched renderer + persistent browser cache |
-| Railway Skin API | **v0.8.1** | Apply + community discovery/publishing API |
+| Railway Skin API | **v0.9.0** | Apply + community discovery/publishing + Discord/Steam linking API |
 | Windows bridge | **v0.8.1** | Cloud library + community catalogue persistence |
 | UE4SS CustomSkins | **v0.6.2** | Multiplayer-hardened live Apply + persistence |
+| Primeval Refuge Bot | **v0.2.0** | Discord setup + secure Discord ↔ Steam linking |
 
 The server-side skin restore has been confirmed after both reconnect and a full dedicated-server restart.
 

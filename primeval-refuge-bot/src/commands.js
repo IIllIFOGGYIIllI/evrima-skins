@@ -5,6 +5,7 @@ import { brandedEmbed, BRAND } from "./brand.js";
 import { config } from "./config.js";
 import { applySetup, inspectSetup } from "./setup.js";
 import { fetchPrimevalStatus } from "./status.js";
+import { getDiscordAccount, startDiscordLink, unlinkDiscordAccount } from "./accounts.js";
 import { canAdmin, isConfiguredGuild } from "./security.js";
 import { log } from "./logger.js";
 
@@ -20,6 +21,9 @@ export const commandData = [
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
   new SlashCommandBuilder().setName("server").setDescription("Show Primeval Refuge server status"),
   new SlashCommandBuilder().setName("website").setDescription("Open the Primeval Refuge Skin Studio"),
+  new SlashCommandBuilder().setName("link").setDescription("Securely link your Discord account to your Steam account"),
+  new SlashCommandBuilder().setName("account").setDescription("Show your Primeval Refuge account link status").addUserOption(o => o.setName("member").setDescription("Admin: inspect another member")),
+  new SlashCommandBuilder().setName("unlink").setDescription("Remove your Discord ↔ Steam account link").addStringOption(o => o.setName("confirm").setDescription("Type UNLINK to confirm").setRequired(true)),
   new SlashCommandBuilder().setName("help").setDescription("Show Primeval Refuge bot commands")
 ].map(command => command.toJSON());
 
@@ -28,6 +32,10 @@ function websiteButtons() {
     new ButtonBuilder().setLabel("Open Skin Studio").setStyle(ButtonStyle.Link).setURL(config.websiteUrl)
   );
 }
+
+function steamLinkButton(url) { return new ActionRowBuilder().addComponents(new ButtonBuilder().setLabel("Verify with Steam").setStyle(ButtonStyle.Link).setURL(url)); }
+function linkedAt(value) { const ts=Math.floor(Number(value||0)/1000); return ts>0?`<t:${ts}:R>`:"Unknown"; }
+function accountDescription(account,subjectLabel="Your account") { if(!account?.linked)return `**${subjectLabel}:** Not linked\n\nRun \`/link\` to verify Steam through the official Steam OpenID page.`; const a=account.account; return `**${subjectLabel}:** Linked\n**SteamID64:** \`${a.steam}\`\n**Linked:** ${linkedAt(a.linkedAt)}`; }
 
 async function guardGuild(interaction) {
   if (!interaction.inGuild()) {
@@ -102,10 +110,17 @@ async function handleWebsite(interaction) {
   });
 }
 
+async function handleLink(interaction){if(!await guardGuild(interaction))return;await interaction.deferReply({ephemeral:true});try{const current=await getDiscordAccount(interaction.user.id);if(current.linked)return interaction.editReply({embeds:[brandedEmbed({title:"Account already linked",description:accountDescription(current),color:BRAND.green})],components:[websiteButtons()]});const link=await startDiscordLink(interaction.user);await interaction.editReply({embeds:[brandedEmbed({title:"Link Discord to Steam",description:"Use the secure button below to sign in through **Steam OpenID**. Primeval Refuge never receives your Steam password.\n\nThis verification link expires in **10 minutes** and is tied to your Discord account.",color:BRAND.green})],components:[steamLinkButton(link.linkUrl)]})}catch(error){log.error("/link failed",error);await interaction.editReply({embeds:[brandedEmbed({title:"Link failed",description:error.message,color:BRAND.danger})]})}}
+async function handleAccount(interaction){if(!await guardGuild(interaction))return;const requested=interaction.options.getUser("member"),target=requested||interaction.user;if(target.id!==interaction.user.id&&!canAdmin(interaction))return interaction.reply({content:"Only an Administrator can inspect another member's account link.",ephemeral:true});await interaction.deferReply({ephemeral:true});try{const account=await getDiscordAccount(target.id),label=target.id===interaction.user.id?"Your account":`${target.username}'s account`;await interaction.editReply({embeds:[brandedEmbed({title:"Primeval Refuge Account",description:accountDescription(account,label),color:account.linked?BRAND.green:BRAND.accent})],components:[websiteButtons()]})}catch(error){log.error("/account failed",error);await interaction.editReply({embeds:[brandedEmbed({title:"Account lookup failed",description:error.message,color:BRAND.danger})]})}}
+async function handleUnlink(interaction){if(!await guardGuild(interaction))return;if(interaction.options.getString("confirm",true).trim().toUpperCase()!=="UNLINK")return interaction.reply({content:"Unlink cancelled. Run `/unlink confirm:UNLINK` when you intend to remove the association.",ephemeral:true});await interaction.deferReply({ephemeral:true});try{const result=await unlinkDiscordAccount(interaction.user.id),description=result.unlinked?"Your Discord account is no longer linked to Steam. Your Steam Skin Studio library is untouched.":"Your Discord account was not linked.";await interaction.editReply({embeds:[brandedEmbed({title:result.unlinked?"Account unlinked":"No account link found",description,color:result.unlinked?BRAND.green:BRAND.accent})]})}catch(error){log.error("/unlink failed",error);await interaction.editReply({embeds:[brandedEmbed({title:"Unlink failed",description:error.message,color:BRAND.danger})]})}}
+
 async function handleHelp(interaction) {
   if (!await guardGuild(interaction)) return;
   const admin = canAdmin(interaction);
   const commands = [
+    "`/link` — securely verify and link your Steam account",
+    "`/account` — view your Discord ↔ Steam link status",
+    "`/unlink` — remove the Discord ↔ Steam association",
     "`/server` — live API / bridge status",
     "`/website` — open the Primeval Refuge Skin Studio",
     "`/help` — command overview"
@@ -121,6 +136,9 @@ export async function routeCommand(interaction) {
     case "setupstatus": return handleSetupStatus(interaction);
     case "server": return handleServer(interaction);
     case "website": return handleWebsite(interaction);
+    case "link": return handleLink(interaction);
+    case "account": return handleAccount(interaction);
+    case "unlink": return handleUnlink(interaction);
     case "help": return handleHelp(interaction);
     default: return interaction.reply({ content: "Unknown command.", ephemeral: true });
   }

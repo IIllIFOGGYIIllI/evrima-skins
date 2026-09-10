@@ -1,4 +1,4 @@
-# Primeval Refuge Bot v0.1.0 — Railway Deployment
+# Primeval Refuge Bot v0.2.0 — Railway Deployment
 
 ## GitHub
 
@@ -27,6 +27,7 @@ Do not change the existing `evrima-skins` service root directory (`/evrima-skins
 DISCORD_BOT_TOKEN=<private bot token>
 DISCORD_CLIENT_ID=<Discord Application ID>
 DISCORD_GUILD_ID=<Primeval Refuge Server ID>
+PRIMEVAL_BOT_API_TOKEN=<private random token>
 PRIMEVAL_WEBSITE_URL=https://iillifoggyiilli.github.io/evrima-skins/
 PRIMEVAL_API_BASE=https://evrima-skins-production.up.railway.app
 PRIMEVAL_LOGO_URL=https://iillifoggyiilli.github.io/evrima-skins/assets/Primeval_Refuge_Official_Logo.png
@@ -49,3 +50,7 @@ Logged in as <bot-name> (<id>)
 - The bot currently calls only `/api/public/status`; no private skin/bridge routes are used in v0.1.0.
 - `/setup` requires Administrator and the literal confirmation value `PRIMEVAL`.
 - `/setup` does not delete unrelated channels or roles.
+
+## v0.2.0 API variables
+
+Set the same `PRIMEVAL_BOT_API_TOKEN` on the API service, set `DISCORD_GUILD_ID`, mount a persistent volume at `/data`, and set `ACCOUNT_LINKS_FILE=/data/primeval-refuge-account-links.json`.

@@ -1,4 +1,4 @@
-# Primeval Refuge Bot v0.1.0
+# Primeval Refuge Bot v0.2.0
 
 Permanent Discord bot foundation for **Primeval Refuge | Evrima PvE**.
 
@@ -10,6 +10,7 @@ Permanent Discord bot foundation for **Primeval Refuge | Evrima PvE**.
 - `/server` reads the existing public Primeval Refuge Skin API status without exposing bridge secrets.
 - `/website` links to the branded Skin Studio.
 - `/help` shows member/admin commands.
+- `/link`, `/account` and `/unlink` securely connect Discord to Steam through Steam OpenID.
 - Official Primeval Refuge logo/banner are used from the existing GitHub Pages assets.
 - Only the standard `Guilds` gateway intent is requested; no Message Content or other privileged intent is required.
 - Railway-safe logging, presence and graceful shutdown.
@@ -53,6 +54,7 @@ Required variables:
 DISCORD_BOT_TOKEN
 DISCORD_CLIENT_ID
 DISCORD_GUILD_ID
+PRIMEVAL_BOT_API_TOKEN
 ```
 
 Optional variables are documented in `.env.example`.
@@ -115,6 +117,5 @@ Then verify:
 
 ## Next milestones
 
-- v0.2.0 — secure Discord ↔ Steam account linking.
-- v0.3.0 — Skin Studio library/community/apply commands through a dedicated bot-to-API authentication path.
+- v0.3.0 — Skin Studio library/community/apply commands through the authenticated bot-to-API path.
 - later — private tickets/reports, moderation workflows, published-skin announcements and server automation.

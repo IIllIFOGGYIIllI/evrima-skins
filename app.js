@@ -657,15 +657,21 @@ async function refreshApplyHistory(silent=true){
 }
 
 function readAuthHash(){
-  const h=new URLSearchParams(location.hash.replace(/^#/,"")),t=h.get("session");
-  if(t){session=t;localStorage.setItem("foggy_skin_session",t);history.replaceState(null,"",location.pathname+location.search);}
+  const h=new URLSearchParams(location.hash.replace(/^#/,"")),t=h.get("session"),discord=h.get("discord"),auth=h.get("auth");
+  if(t){session=t;localStorage.setItem("foggy_skin_session",t);}
+  if(discord==="linked")toast("Discord linked to this Steam account");
+  else if(discord==="conflict")toast("Discord or Steam is already linked to another account");
+  else if(discord==="expired")toast("Discord link expired. Run /link again in Discord");
+  else if(discord==="failed")toast("Steam verification failed");
+  else if(auth==="failed")toast("Steam sign-in failed");
+  if(t||discord||auth)history.replaceState(null,"",location.pathname+location.search);
 }
 async function refreshMe(){
   if(!API_READY){$("apiStatus").textContent="API not configured";$("apiStatus").className="status warn";setCloudStatus("Cloud library unavailable","bad");return;}
   try{await api("/health");$("apiStatus").textContent="Skin API online";$("apiStatus").className="status good";}
   catch{$("apiStatus").textContent="Skin API unreachable";$("apiStatus").className="status bad";}
   if(!session){me=null;cloudLibrary={skins:[],lastApplied:null};activeCloudId="";publishedMine=[];renderCloudLibrary();renderPublishedMine();setCloudStatus("Sign in with Steam to sync saved skins","");setPublishStatus("Sign in with Steam to publish","");$("accountTitle").textContent="Steam not linked";$("accountDetail").textContent="Sign in once. No client files or commands required.";$("steamButton").textContent="Sign in with Steam";return;}
-  try{me=await api("/api/me");$("accountTitle").textContent="Steam linked";$("accountDetail").textContent="SteamID64 "+me.steam;$("steamButton").textContent="Sign out";loadCachedCloudLibrary();refreshCloudLibrary(true);refreshApplyHistory(true);refreshPublishedMine(true);}
+  try{me=await api("/api/me");$("accountTitle").textContent=me.discord?"Steam + Discord linked":"Steam linked";const discordLabel=me.discord?(me.discord.displayName||me.discord.username||me.discord.id):"Not linked";$("accountDetail").textContent="SteamID64 "+me.steam+" • Discord: "+discordLabel;$("steamButton").textContent="Sign out";loadCachedCloudLibrary();refreshCloudLibrary(true);refreshApplyHistory(true);refreshPublishedMine(true);}
   catch{session="";localStorage.removeItem("foggy_skin_session");me=null;refreshMe();}
 }
 let statusRefreshBusy=false;

@@ -1,5 +1,8 @@
 const http=require("http");
 const crypto=require("crypto");
+const os=require("os");
+const path=require("path");
+const {AccountLinkStore,validDiscord}=require("./account-links");
 
 const PORT=Number(process.env.PORT||3000);
 const PUBLIC_BASE_URL=String(process.env.PUBLIC_BASE_URL||"").replace(/\/$/,"");
@@ -7,11 +10,17 @@ const FRONTEND_URL=String(process.env.FRONTEND_URL||"https://iillifoggyiilli.git
 const SESSION_SECRET=String(process.env.SESSION_SECRET||"");
 const SERVER_BRIDGE_TOKEN=String(process.env.SERVER_BRIDGE_TOKEN||"");
 const SERVER_ID=String(process.env.SERVER_ID||"foggy-evrima-pve");
+const PRIMEVAL_BOT_API_TOKEN=String(process.env.PRIMEVAL_BOT_API_TOKEN||"");
+const DISCORD_GUILD_ID=String(process.env.DISCORD_GUILD_ID||"");
+const ACCOUNT_LINKS_FILE=String(process.env.ACCOUNT_LINKS_FILE||path.join(os.tmpdir(),"primeval-refuge-account-links.json"));
 
 const FIELDS=["body","markings","flank","underbelly","detail","eyes","breed","teeth","mouth","claws"];
 const commands=new Map(),order=[];
 const libraryCommands=new Map(),libraryOrder=[];
 const communityCache=new Map();let communityRevision=0,communityCacheAt=0;
+const accountLinks=new AccountLinkStore(ACCOUNT_LINKS_FILE);
+const pendingDiscordLinks=new Map();
+const DISCORD_LINK_TTL_MS=10*60*1000;
 const rate=new Map(),steamApplyRate=new Map(),libraryRate=new Map(),steamLibraryRate=new Map(),communityRate=new Map(),steamCommunityRate=new Map();
 let lastHeartbeat=0;
 
@@ -27,7 +36,9 @@ function b64(x){return Buffer.from(x).toString("base64url")}
 function signSession(steam){const p=b64(JSON.stringify({steam:String(steam),exp:Date.now()+30*24*60*60*1000}));const s=b64(crypto.createHmac("sha256",SESSION_SECRET).update(p).digest());return p+"."+s}
 function verifySession(token){if(!SESSION_SECRET||!token||!token.includes("."))return null;const [p,s]=token.split(".");const expect=b64(crypto.createHmac("sha256",SESSION_SECRET).update(p).digest());const a=Buffer.from(s),b=Buffer.from(expect);if(a.length!==b.length||!crypto.timingSafeEqual(a,b))return null;let d;try{d=JSON.parse(Buffer.from(p,"base64url").toString("utf8"))}catch{return null}if(!/^\d{17}$/.test(String(d.steam||""))||Number(d.exp||0)<Date.now())return null;return d}
 function user(req){return verifySession(bearer(req))}
-function serverAuth(req){const t=bearer(req);if(!t||!SERVER_BRIDGE_TOKEN)return false;const a=Buffer.from(t),b=Buffer.from(SERVER_BRIDGE_TOKEN);return a.length===b.length&&crypto.timingSafeEqual(a,b)}
+function safeTokenEqual(a,b){a=String(a||"");b=String(b||"");if(!a||!b)return false;const aa=Buffer.from(a),bb=Buffer.from(b);return aa.length===bb.length&&crypto.timingSafeEqual(aa,bb)}
+function serverAuth(req){return safeTokenEqual(bearer(req),SERVER_BRIDGE_TOKEN)}
+function botAuth(req){return safeTokenEqual(bearer(req),PRIMEVAL_BOT_API_TOKEN)}
 async function readBody(req,limit=128*1024){const chunks=[];let n=0;for await(const c of req){n+=c.length;if(n>limit)throw Error("request too large");chunks.push(c)}return chunks.length?JSON.parse(Buffer.concat(chunks).toString("utf8")):{}}
 function cleanHex(v){v=String(v||"").trim().toUpperCase();return /^#[0-9A-F]{6}$/.test(v)?v:null}
 const SPECIES_PATTERNS={tyrannosaurus:3,allosaurus:3,austroraptor:3,carnotaurus:4,ceratosaurus:3,deinosuchus:3,dilophosaurus:3,herrerasaurus:3,omniraptor:5,pteranodon:3,troodon:3,triceratops:3,stegosaurus:3,diabloceratops:3,kentrosaurus:3,tenontosaurus:3,maiasaura:3,pachycephalosaurus:4,dryosaurus:3,hypsilophodon:3,gallimimus:3,beipiaosaurus:3};
@@ -93,14 +104,15 @@ function allowLibraryRate(ip){return allowBucket(libraryRate,ip,60)}
 function allowSteamLibrary(steam){return allowBucket(steamLibraryRate,steam,40)}
 function allowCommunityRate(ip){return allowBucket(communityRate,ip,30)}
 function allowSteamCommunity(steam){return allowBucket(steamCommunityRate,steam,12)}
-function openidUrl(){const ret=PUBLIC_BASE_URL+"/auth/steam/callback",p=new URLSearchParams({"openid.ns":"http://specs.openid.net/auth/2.0","openid.mode":"checkid_setup","openid.return_to":ret,"openid.realm":PUBLIC_BASE_URL,"openid.identity":"http://specs.openid.net/auth/2.0/identifier_select","openid.claimed_id":"http://specs.openid.net/auth/2.0/identifier_select"});return"https://steamcommunity.com/openid/login?"+p}
+function pruneDiscordLinks(){const now=Date.now();for(const [token,item] of pendingDiscordLinks)if(item.expiresAt<=now)pendingDiscordLinks.delete(token)}
+function pendingDiscordLink(token){pruneDiscordLinks();const item=pendingDiscordLinks.get(String(token||""));return item&&item.expiresAt>Date.now()?item:null}
+function createDiscordLinkPending(raw){pruneDiscordLinks();const discordId=String(raw?.discordId||""),guildId=String(raw?.guildId||"");if(!validDiscord(discordId)||!DISCORD_GUILD_ID||guildId!==DISCORD_GUILD_ID)return null;for(const [token,item] of pendingDiscordLinks)if(item.discordId===discordId)pendingDiscordLinks.delete(token);const token=crypto.randomBytes(32).toString("base64url"),now=Date.now(),item={token,discordId,guildId,username:String(raw?.username||"").slice(0,64),displayName:String(raw?.displayName||"").slice(0,64),createdAt:now,expiresAt:now+DISCORD_LINK_TTL_MS};pendingDiscordLinks.set(token,item);return item}
+function openidUrl(linkToken=""){let ret=PUBLIC_BASE_URL+"/auth/steam/callback";if(linkToken)ret+="?link="+encodeURIComponent(linkToken);const p=new URLSearchParams({"openid.ns":"http://specs.openid.net/auth/2.0","openid.mode":"checkid_setup","openid.return_to":ret,"openid.realm":PUBLIC_BASE_URL,"openid.identity":"http://specs.openid.net/auth/2.0/identifier_select","openid.claimed_id":"http://specs.openid.net/auth/2.0/identifier_select"});return"https://steamcommunity.com/openid/login?"+p}
 async function verifySteam(url){const p=new URLSearchParams(url.searchParams);p.set("openid.mode","check_authentication");const r=await fetch("https://steamcommunity.com/openid/login",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:p.toString()});const txt=await r.text();if(!/is_valid\s*:\s*true/i.test(txt))return null;const claimed=url.searchParams.get("openid.claimed_id")||"",m=claimed.match(/\/id\/(\d{17})$/);return m?m[1]:null}
 
 const https=require("https");
 const fs=require("fs");
 const fsp=require("fs/promises");
-const os=require("os");
-const path=require("path");
 const {Transform}=require("stream");
 const {pipeline}=require("stream/promises");
 
@@ -263,10 +275,14 @@ const app=http.createServer(async(req,res)=>{
   cors(req,res);if(req.method==="OPTIONS"){res.writeHead(204);return res.end()}
   const url=new URL(req.url,PUBLIC_BASE_URL||`http://${req.headers.host||"localhost"}`);
   try{
-    if(req.method==="GET"&&url.pathname==="/health")return send(res,200,{ok:true,service:"FOGGY Evrima Skin API",version:"0.8.1"});
-    if(req.method==="GET"&&url.pathname==="/auth/steam"){if(!PUBLIC_BASE_URL||!SESSION_SECRET)return send(res,503,{error:"Steam auth is not configured"});res.writeHead(302,{Location:openidUrl(),"Cache-Control":"no-store"});return res.end()}
-    if(req.method==="GET"&&url.pathname==="/auth/steam/callback"){const steam=await verifySteam(url);if(!steam){res.writeHead(302,{Location:FRONTEND_URL+"#auth=failed"});return res.end()}res.writeHead(302,{Location:FRONTEND_URL+"#session="+encodeURIComponent(signSession(steam)),"Cache-Control":"no-store"});return res.end()}
-    if(req.method==="GET"&&url.pathname==="/api/me"){const u=user(req);if(!u)return send(res,401,{error:"Steam sign-in required"});return send(res,200,{steam:u.steam})}
+    if(req.method==="GET"&&url.pathname==="/health")return send(res,200,{ok:true,service:"FOGGY Evrima Skin API",version:"0.9.0",accountLinkStoragePersistent:Boolean(process.env.ACCOUNT_LINKS_FILE)});
+    if(req.method==="GET"&&url.pathname==="/auth/steam"){if(!PUBLIC_BASE_URL||!SESSION_SECRET)return send(res,503,{error:"Steam auth is not configured"});const linkToken=String(url.searchParams.get("link")||"");if(linkToken&&!pendingDiscordLink(linkToken))return send(res,410,{error:"Discord link request expired. Run /link again in Discord."});res.writeHead(302,{Location:openidUrl(linkToken),"Cache-Control":"no-store"});return res.end()}
+    if(req.method==="GET"&&url.pathname==="/auth/steam/callback"){const linkToken=String(url.searchParams.get("link")||""),steam=await verifySteam(url);if(!steam){res.writeHead(302,{Location:FRONTEND_URL+(linkToken?"#discord=failed":"#auth=failed"),"Cache-Control":"no-store"});return res.end()}const session=signSession(steam);if(linkToken){const pending=pendingDiscordLink(linkToken);if(!pending){res.writeHead(302,{Location:FRONTEND_URL+"#session="+encodeURIComponent(session)+"&discord=expired","Cache-Control":"no-store"});return res.end()}pendingDiscordLinks.delete(linkToken);try{await accountLinks.link({discordId:pending.discordId,steam,username:pending.username,displayName:pending.displayName});res.writeHead(302,{Location:FRONTEND_URL+"#session="+encodeURIComponent(session)+"&discord=linked","Cache-Control":"no-store"});return res.end()}catch(e){if(e?.code==="DISCORD_ALREADY_LINKED"||e?.code==="STEAM_ALREADY_LINKED"){res.writeHead(302,{Location:FRONTEND_URL+"#session="+encodeURIComponent(session)+"&discord=conflict","Cache-Control":"no-store"});return res.end()}throw e}}res.writeHead(302,{Location:FRONTEND_URL+"#session="+encodeURIComponent(session),"Cache-Control":"no-store"});return res.end()}
+    if(req.method==="GET"&&url.pathname==="/api/me"){const u=user(req);if(!u)return send(res,401,{error:"Steam sign-in required"});const link=accountLinks.getBySteam(u.steam);return send(res,200,{steam:u.steam,discord:link?{id:link.discordId,username:link.username,displayName:link.displayName,linkedAt:link.linkedAt}:null})}
+    const discordAccountMatch=url.pathname.match(/^\/api\/discord\/account\/(\d{15,22})$/);
+    if(req.method==="GET"&&discordAccountMatch){if(!botAuth(req))return send(res,401,{error:"Invalid Primeval bot token"});const link=accountLinks.getByDiscord(discordAccountMatch[1]);return send(res,200,{linked:Boolean(link),account:link?{discordId:link.discordId,steam:link.steam,username:link.username,displayName:link.displayName,linkedAt:link.linkedAt}:null})}
+    if(req.method==="POST"&&url.pathname==="/api/discord/link/start"){if(!botAuth(req))return send(res,401,{error:"Invalid Primeval bot token"});const b=await readBody(req,16*1024),pending=createDiscordLinkPending(b);if(!pending)return send(res,400,{error:"Invalid Discord link request"});const existing=accountLinks.getByDiscord(pending.discordId);if(existing){pendingDiscordLinks.delete(pending.token);return send(res,409,{error:"Discord account is already linked",code:"ALREADY_LINKED",steam:existing.steam})}return send(res,201,{ok:true,linkUrl:PUBLIC_BASE_URL+"/auth/steam?link="+encodeURIComponent(pending.token),expiresAt:pending.expiresAt})}
+    if(req.method==="POST"&&url.pathname==="/api/discord/link/unlink"){if(!botAuth(req))return send(res,401,{error:"Invalid Primeval bot token"});const b=await readBody(req,16*1024),discordId=String(b.discordId||""),guildId=String(b.guildId||"");if(!validDiscord(discordId)||!DISCORD_GUILD_ID||guildId!==DISCORD_GUILD_ID)return send(res,400,{error:"Invalid Discord unlink request"});const old=await accountLinks.unlinkDiscord(discordId);return send(res,200,{ok:true,unlinked:Boolean(old),steam:old?.steam||null})}
     if(req.method==="GET"&&url.pathname==="/api/public/status")return send(res,200,{server:SERVER_ID,online:bridgeIsOnline(),lastHeartbeat:lastHeartbeat||null});
     if(req.method==="GET"&&url.pathname==="/api/assets")return await proxyAsset(url,res);
     if(req.method==="GET"&&url.pathname==="/api/assets/status"){
@@ -388,4 +404,4 @@ const app=http.createServer(async(req,res)=>{
     return send(res,404,{error:"Not found"})
   }catch(e){console.error("[FOGGY API]",e);return send(res,500,{error:"Internal server error"})}
 });
-app.listen(PORT,()=>console.log(`[FOGGY API] listening on :${PORT}`));
+accountLinks.init().then(()=>{app.listen(PORT,()=>console.log(`[FOGGY API] listening on :${PORT} • ${accountLinks.count()} Discord/Steam link(s) loaded`))}).catch(error=>{console.error("[FOGGY API] account link storage failed",error);process.exit(1)});

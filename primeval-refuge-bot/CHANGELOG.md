@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.2.0 — Discord ↔ Steam Account Linking
+
+- Adds `/link`, `/account` and `/unlink`.
+- Uses short-lived Steam OpenID verification tied to the invoking Discord account.
+- Enforces one Discord ↔ one SteamID64.
+- Adds dedicated authenticated bot-to-API routes and persistent account-link storage.
+- Preserves all v0.1.0 setup/status behavior.
+
+
 ## v0.1.0 — Foundation + Discord Setup
 
 - Adds the permanent Primeval Refuge Discord bot as its own Railway-ready service.

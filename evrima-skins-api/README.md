@@ -1,4 +1,4 @@
-# FOGGY Evrima Skin API v0.8.1
+# FOGGY Evrima Skin API v0.9.0
 
 Railway backend for the FOGGY Evrima Skin Studio.
 
@@ -68,3 +68,7 @@ API v0.8.1 adds authenticated `POST /api/community/op` actions (`mine`, `publish
 ### Community Discovery v0.8.1
 
 `GET /api/community/public` exposes up to 200 sanitized Public snapshots including save/favourite counts and the prepared featured flag. Authenticated `community-save`, `community-favorite`, and `community-favorites` operations are delegated to Bridge v0.8.1 so ownership, duplicate detection and persistent counters remain authoritative on the server. Unlisted snapshots remain accessible only by exact item link and are never returned by the public catalogue.
+
+## Discord ↔ Steam account linking (v0.9.0)
+
+Additional variables: `PRIMEVAL_BOT_API_TOKEN`, `DISCORD_GUILD_ID`, and `ACCOUNT_LINKS_FILE`. On Railway, mount a persistent volume at `/data` and set `ACCOUNT_LINKS_FILE=/data/primeval-refuge-account-links.json`. Steam OpenID is authoritative; account ownership is one-to-one and bot routes require the dedicated bot bearer token.
