@@ -1,5 +1,5 @@
 import { config } from "./config.js";
-const USER_AGENT="Primeval-Refuge-Bot/0.2.0";
+const USER_AGENT="Primeval-Refuge-Bot/0.3.0";
 async function apiRequest(path,{method="GET",body,timeoutMs=6000}={}){const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeoutMs);try{const response=await fetch(`${config.apiBase}${path}`,{method,headers:{authorization:`Bearer ${config.botApiToken}`,"content-type":"application/json","user-agent":USER_AGENT},body:body===undefined?undefined:JSON.stringify(body),cache:"no-store",signal:controller.signal});let data={};try{data=await response.json()}catch{}if(!response.ok){const error=new Error(String(data?.error||`Primeval API HTTP ${response.status}`));error.status=response.status;error.code=String(data?.code||"");throw error}return data}finally{clearTimeout(timer)}}
 export const getDiscordAccount=discordId=>apiRequest(`/api/discord/account/${encodeURIComponent(discordId)}`);
 export const startDiscordLink=user=>apiRequest("/api/discord/link/start",{method:"POST",body:{discordId:user.id,guildId:config.guildId,username:user.username,displayName:user.globalName||user.username}});

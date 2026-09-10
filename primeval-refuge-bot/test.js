@@ -1,5 +1,31 @@
 import assert from "node:assert/strict";
-import {ROLE_BLUEPRINT,CATEGORY_BLUEPRINT,expectedCounts} from "./src/blueprint.js";
-const roleKeys=ROLE_BLUEPRINT.map(x=>x.key);assert.equal(new Set(roleKeys).size,roleKeys.length);assert.deepEqual(roleKeys,["admin","moderator","support","member"]);const channelKeys=CATEGORY_BLUEPRINT.flatMap(c=>c.channels.map(x=>x.key));assert(channelKeys.includes("skin-studio"));const counts=expectedCounts();assert.equal(counts.roles,4);assert.equal(counts.categories,8);assert(counts.channels>=30);
-Object.assign(process.env,{DISCORD_BOT_TOKEN:"test",DISCORD_CLIENT_ID:"1547334981246918766",DISCORD_GUILD_ID:"123456789012345678",PRIMEVAL_BOT_API_TOKEN:"test-api",PRIMEVAL_WEBSITE_URL:"https://example.com",PRIMEVAL_API_BASE:"https://api.example.com",PRIMEVAL_LOGO_URL:"https://example.com/logo.png",PRIMEVAL_BANNER_URL:"https://example.com/banner.png"});
-const {commandData}=await import("./src/commands.js");assert.deepEqual(commandData.map(x=>x.name),["setup","setupstatus","server","website","link","account","unlink","help"]);console.log(`Primeval Refuge bot v0.2.0 OK: ${counts.roles} roles, ${counts.categories} categories, ${counts.channels} channels, ${commandData.length} commands.`);
+import { ROLE_BLUEPRINT, CATEGORY_BLUEPRINT, expectedCounts } from "./src/blueprint.js";
+
+const roleKeys = ROLE_BLUEPRINT.map(x => x.key);
+assert.equal(new Set(roleKeys).size, roleKeys.length);
+assert.deepEqual(roleKeys, ["admin", "moderator", "support", "member"]);
+const channelKeys = CATEGORY_BLUEPRINT.flatMap(c => c.channels.map(x => x.key));
+assert(channelKeys.includes("skin-studio"));
+const counts = expectedCounts();
+assert.equal(counts.roles, 4);
+assert.equal(counts.categories, 8);
+assert(counts.channels >= 30);
+
+Object.assign(process.env, {
+  DISCORD_BOT_TOKEN: "test",
+  DISCORD_CLIENT_ID: "1547334981246918766",
+  DISCORD_GUILD_ID: "123456789012345678",
+  PRIMEVAL_BOT_API_TOKEN: "test-api",
+  PRIMEVAL_WEBSITE_URL: "https://example.com",
+  PRIMEVAL_API_BASE: "https://api.example.com",
+  PRIMEVAL_LOGO_URL: "https://example.com/logo.png",
+  PRIMEVAL_BANNER_URL: "https://example.com/banner.png"
+});
+
+const { commandData } = await import("./src/commands.js");
+assert.deepEqual(commandData.map(x => x.name), ["setup", "setupstatus", "server", "website", "link", "account", "unlink", "skins", "skin", "help"]);
+const skinCommand = commandData.find(x => x.name === "skin");
+assert.deepEqual((skinCommand.options || []).map(x => x.name), ["view", "apply", "published", "status", "website"]);
+const skinsCommand = commandData.find(x => x.name === "skins");
+assert.deepEqual((skinsCommand.options || []).map(x => x.name), ["page", "filter", "favorites"]);
+console.log(`Primeval Refuge bot v0.3.0 OK: ${counts.roles} roles, ${counts.categories} categories, ${counts.channels} channels, ${commandData.length} commands.`);

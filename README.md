@@ -8,14 +8,20 @@ Browser skin creator for **Primeval Refuge**, an Evrima PvE community.
 
 | Component | Version | State |
 | --- | --- | --- |
-| Website | **v0.10.2** | Primeval Refuge branding + Studio / Library / Community / Publish |
+| Website | **v0.10.3** | Primeval Refuge branding + Studio / Library / Community / Publish + Discord deep links |
 | Preview pipeline | **v0.8.3** | Researched renderer + persistent browser cache |
-| Railway Skin API | **v0.9.0** | Apply + community discovery/publishing + Discord/Steam linking API |
+| Railway Skin API | **v0.10.0** | Apply + community discovery/publishing + Discord Skin Studio bot API |
 | Windows bridge | **v0.8.1** | Cloud library + community catalogue persistence |
 | UE4SS CustomSkins | **v0.6.2** | Multiplayer-hardened live Apply + persistence |
-| Primeval Refuge Bot | **v0.2.0** | Discord setup + secure Discord ↔ Steam linking |
+| Primeval Refuge Bot | **v0.3.0** | Discord setup + Steam linking + Skin Studio library/apply commands |
 
 The server-side skin restore has been confirmed after both reconnect and a full dedicated-server restart.
+
+## Discord Skin Studio integration — Bot v0.3.0 / API v0.10.0 / Web v0.10.3
+
+Linked Discord members can now browse their authoritative Steam Skin Studio library with `/skins`, inspect saved designs, apply a saved design through the existing Railway → Windows bridge → UE4SS pipeline, review their own published entries, check Apply lifecycle status and jump directly from Discord into the matching website library entry. Private library and publishing results are returned ephemerally in Discord.
+
+The bot never receives a browser Steam session token and cannot choose an arbitrary SteamID. Every bot Skin Studio request is authenticated with the existing dedicated bot credential, mapped server-side through the one-to-one Discord ↔ Steam link, and then owned by that linked Steam account. No new Railway variable, bridge command type, UE4SS worker or game-server configuration is required for v0.3.0.
 
 ## Primeval Refuge branding — Web v0.10.2
 

@@ -1,4 +1,4 @@
-# Primeval Refuge Bot v0.2.0
+# Primeval Refuge Bot v0.3.0
 
 Permanent Discord bot foundation for **Primeval Refuge | Evrima PvE**.
 
@@ -11,6 +11,12 @@ Permanent Discord bot foundation for **Primeval Refuge | Evrima PvE**.
 - `/website` links to the branded Skin Studio.
 - `/help` shows member/admin commands.
 - `/link`, `/account` and `/unlink` securely connect Discord to Steam through Steam OpenID.
+- `/skins` browses the linked Steam Skin Studio library with paging, search and favourites filtering.
+- `/skin view` inspects a saved skin and links directly to it on the website.
+- `/skin apply` sends a saved skin through the existing live Apply pipeline.
+- `/skin status` reports the latest Railway → bridge → UE4SS lifecycle state.
+- `/skin published` shows the member's own publishing records, including unlisted/unpublished entries.
+- `/skin website` opens the website library or a specific saved skin.
 - Official Primeval Refuge logo/banner are used from the existing GitHub Pages assets.
 - Only the standard `Guilds` gateway intent is requested; no Message Content or other privileged intent is required.
 - Railway-safe logging, presence and graceful shutdown.
@@ -43,7 +49,7 @@ The STAFF category is private. `server-management` is Admin-only; `moderation-lo
 
 1. Go to the Discord Developer Portal and create an application named **Primeval Refuge**.
 2. Open **Bot** and create/reset the bot token. Keep it private.
-3. No privileged gateway intents need to be enabled for v0.1.0.
+3. No privileged gateway intents need to be enabled for v0.3.0.
 4. Copy the **Application ID**; this is `DISCORD_CLIENT_ID`.
 5. In Discord, enable Developer Mode, right-click the Primeval Refuge server and **Copy Server ID**; this is `DISCORD_GUILD_ID`.
 6. Put the three required values in Railway variables — never in GitHub.
@@ -113,9 +119,22 @@ Then verify:
 /setupstatus
 /server
 /website
+/account
+/skins
+/skin status
 ```
+
+## v0.3.0 Skin Studio security model
+
+- The bot uses `PRIMEVAL_BOT_API_TOKEN`; it never receives or reuses a browser Steam session token.
+- Discord IDs are translated to SteamID64 only inside the API using the verified persistent account-link store.
+- `/skins`, `/skin view`, `/skin apply`, `/skin status` and `/skin published` return private data ephemerally.
+- Bot library access is read-only. Applying a skin is the only v0.3.0 state-changing Skin Studio command.
+- Apply requests keep the existing one-in-flight-per-Steam rule, validation and rate protection.
+- The Windows bridge and UE4SS protocols are unchanged.
 
 ## Next milestones
 
-- v0.3.0 — Skin Studio library/community/apply commands through the authenticated bot-to-API path.
-- later — private tickets/reports, moderation workflows, published-skin announcements and server automation.
+- private tickets/reports and moderation workflows.
+- opt-in published-skin announcements and featured-skin curation.
+- server automation where it can be added without weakening multiplayer or account isolation.

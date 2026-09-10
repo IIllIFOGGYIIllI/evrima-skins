@@ -1,6 +1,6 @@
 {
   "name": "primeval-refuge-bot",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "description": "Primeval Refuge permanent Discord bot",

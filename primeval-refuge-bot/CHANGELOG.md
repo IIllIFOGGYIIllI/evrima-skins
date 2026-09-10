@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.3.0 — Discord Skin Studio Integration
+
+- Adds `/skins` with paging, text filtering and favourites-only mode.
+- Adds `/skin view`, `/skin apply`, `/skin status`, `/skin published` and `/skin website`.
+- Adds safe skin-name / UUID-prefix resolution and direct website library deep links.
+- Keeps private Skin Studio responses ephemeral.
+- Uses only server-resolved Discord ↔ Steam ownership; no SteamID can be supplied by the member.
+- Preserves all v0.2.0 linking and v0.1.0 Discord setup behavior.
+
 ## v0.2.0 — Discord ↔ Steam Account Linking
 
 - Adds `/link`, `/account` and `/unlink`.

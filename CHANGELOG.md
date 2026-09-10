@@ -1,3 +1,16 @@
+## Bot v0.3.0 / API v0.10.0 / Web v0.10.3 — Discord Skin Studio Integration
+
+- Adds `/skins` for paged, filterable access to the linked Steam Skin Studio library.
+- Adds `/skin view`, `/skin apply`, `/skin status`, `/skin published` and `/skin website`.
+- Resolves skin names and short library-ID prefixes safely, with ambiguity protection.
+- Keeps private library, publication and Apply data ephemeral in Discord.
+- Uses the existing dedicated bot bearer credential; the bot never receives a browser Steam session token or accepts an arbitrary SteamID.
+- Maps every private Skin Studio action server-side through the verified one-to-one Discord ↔ Steam account link.
+- Sends Discord Apply requests through the existing hardened Railway → bridge → UE4SS pipeline with the same per-Steam in-flight and rate protections.
+- Adds bot-owned Apply status/recent-history API routes and read-only library/publishing transport.
+- Adds website `?view=library&skin=<id>` deep-link handling so Discord can open the exact saved skin.
+- Requires no new Railway variable, Windows bridge command, UE4SS update, database migration or server wipe.
+
 ## Bot v0.2.0 / API v0.9.0 — Discord ↔ Steam Account Linking
 
 - Adds secure `/link`, `/account` and `/unlink` Discord commands.

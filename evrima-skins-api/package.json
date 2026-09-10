@@ -1,6 +1,6 @@
 {
   "name": "foggy-evrima-skin-api",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "private": true,
   "scripts": {
     "start": "node server.js",

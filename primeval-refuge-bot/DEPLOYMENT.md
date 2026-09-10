@@ -1,4 +1,4 @@
-# Primeval Refuge Bot v0.2.0 — Railway Deployment
+# Primeval Refuge Bot v0.3.0 — Railway Deployment
 
 ## GitHub
 
@@ -7,7 +7,7 @@ Upload the entire `primeval-refuge-bot/` folder into the existing `IIllIFOGGYIIl
 Suggested commit:
 
 ```text
-Add Primeval Refuge Discord bot
+Add Discord Skin Studio commands
 ```
 
 ## Create the second Railway service
@@ -39,7 +39,7 @@ PRIMEVAL_BANNER_URL=https://iillifoggyiilli.github.io/evrima-skins/assets/Primev
 ## Expected startup log
 
 ```text
-Registered 5 guild slash commands.
+Registered 10 guild slash commands.
 Logged in as <bot-name> (<id>)
 ```
 
@@ -47,10 +47,14 @@ Logged in as <bot-name> (<id>)
 
 - Never commit the bot token.
 - Never reuse `SERVER_BRIDGE_TOKEN` as the Discord bot token or future bot API credential.
-- The bot currently calls only `/api/public/status`; no private skin/bridge routes are used in v0.1.0.
+- Private Skin Studio commands use only the dedicated `PRIMEVAL_BOT_API_TOKEN`; never reuse the Discord bot token, Steam session token or `SERVER_BRIDGE_TOKEN`.
 - `/setup` requires Administrator and the literal confirmation value `PRIMEVAL`.
 - `/setup` does not delete unrelated channels or roles.
 
-## v0.2.0 API variables
+## API variables and persistence
 
 Set the same `PRIMEVAL_BOT_API_TOKEN` on the API service, set `DISCORD_GUILD_ID`, mount a persistent volume at `/data`, and set `ACCOUNT_LINKS_FILE=/data/primeval-refuge-account-links.json`.
+
+## v0.3.0
+
+No additional Railway variables or volumes are required beyond the v0.2.0 account-link configuration. The API service must remain connected to the same `PRIMEVAL_BOT_API_TOKEN` and `DISCORD_GUILD_ID`.

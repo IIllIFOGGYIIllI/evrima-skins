@@ -1,4 +1,4 @@
-# FOGGY Evrima Skin API v0.9.0
+# FOGGY Evrima Skin API v0.10.0
 
 Railway backend for the FOGGY Evrima Skin Studio.
 
@@ -72,3 +72,9 @@ API v0.8.1 adds authenticated `POST /api/community/op` actions (`mine`, `publish
 ## Discord ↔ Steam account linking (v0.9.0)
 
 Additional variables: `PRIMEVAL_BOT_API_TOKEN`, `DISCORD_GUILD_ID`, and `ACCOUNT_LINKS_FILE`. On Railway, mount a persistent volume at `/data` and set `ACCOUNT_LINKS_FILE=/data/primeval-refuge-account-links.json`. Steam OpenID is authoritative; account ownership is one-to-one and bot routes require the dedicated bot bearer token.
+
+## Discord Skin Studio API (v0.10.0)
+
+The dedicated bot credential can now request read-only linked-account library/publishing operations and linked-account Apply status without a browser Steam session. `POST /api/discord/library/op` accepts only `list` and `community-mine`; results are polled through the bot-only library-status route. `POST /api/discord/skins/apply` validates a saved library snapshot and queues it under the SteamID resolved from the verified Discord link. Bot-owned Apply status and recent-history routes enforce the same resolved Steam ownership.
+
+The bot cannot supply a SteamID, cannot mutate library records in v0.10.0, and cannot bypass the existing one-in-flight Apply or per-Steam Apply rate limit. The Windows bridge and UE4SS command formats are unchanged.

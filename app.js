@@ -31,7 +31,7 @@ let selected=SPECIES[0],patternIndex=0,skinVariation=1,themeIndex=0,previewSex="
 let previewMode="skin3d";
 let session=localStorage.getItem("foggy_skin_session")||"",me=null;
 let history=[],future=[],historyLock=false;
-let cloudLibrary={skins:[],lastApplied:null},activeCloudId="",bridgeOnline=false,cloudBusy=false;
+let cloudLibrary={skins:[],lastApplied:null},activeCloudId="",bridgeOnline=false,cloudBusy=false,cloudDeepLinkHandled=false;
 let publishedMine=[],sharedPublicationItem=null;
 let communityPublic=[],communityFavorites=new Set(),communityBusy=false,communityTagFilter="";
 const APPLY_HISTORY_KEY="foggy_apply_history_v1";
@@ -324,6 +324,7 @@ function renderCloudLibrary(){
   if(!skins.length){sel.append(new Option(me?(all.length?"No skins match these filters":"No Steam-linked skins yet"):"Sign in with Steam",""));}
   else{sel.append(new Option("Choose Steam skin…",""));skins.forEach(s=>sel.append(new Option(`${s.favorite?"★ ":""}${s.name} · ${s.species}${s.tags?.length?" · "+s.tags.slice(0,2).join("/"):""}`,s.id)));}
   if(skins.some(s=>s.id===keep))sel.value=keep;
+  if(!cloudDeepLinkHandled){const requested=new URLSearchParams(location.search).get("skin");if(requested){const target=all.find(s=>String(s.id||"")===requested);if(target&&skins.some(s=>s.id===target.id)){sel.value=target.id;activeCloudId=target.id;cloudDeepLinkHandled=true;}}else cloudDeepLinkHandled=true;}
   const chosen=all.find(s=>s.id===sel.value);$("favoriteCloud").textContent=chosen?.favorite?"★ Favourited":"☆ Favourite";
   $("loadLastApplied").disabled=!cloudLibrary.lastApplied?.skin;
   if($("cloudCount"))$("cloudCount").textContent=`Showing ${skins.length} of ${all.length} Steam skin${all.length===1?"":"s"}`;
