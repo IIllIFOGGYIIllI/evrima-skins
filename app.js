@@ -449,7 +449,7 @@ async function saveCloudMetadata(){
 
 
 
-const APP_PAGES=new Set(["studio","library","community","map","publishing"]);
+const APP_PAGES=new Set(["studio","library","community","map","guide","publishing"]);
 function currentPageFromUrl(){const q=new URLSearchParams(location.search),p=q.get("view");return APP_PAGES.has(p)?p:(q.get("published")?"community":"studio");}
 function setAppPage(page,writeUrl=true){
   if(!APP_PAGES.has(page))page="studio";
@@ -460,6 +460,7 @@ function setAppPage(page,writeUrl=true){
   if(page==="publishing"&&me)refreshPublishedMine(true);
   if(page==="community")refreshCommunity(true);
   if(page==="map"){setTimeout(()=>{syncGatewayMapSize();renderGatewayMap();},25);if(me)refreshLiveLocation(true);}
+  if(page==="guide"){renderGuideLiveContext();filterGuideCards();}
 }
 function cleanPublishDescription(v){return String(v||"").replace(/[\r\t]/g," ").replace(/\n{3,}/g,"\n\n").trim().slice(0,240);}
 function selectedPublishSource(){return (cloudLibrary.skins||[]).find(s=>s.id===$("publishSource")?.value)||null;}
@@ -702,7 +703,7 @@ async function refreshLiveLocation(silent=true){
 }
 
 
-/* Primeval Refuge Gateway Live Map v0.11.0 */
+/* Primeval Refuge Gateway Live Map + Guide v0.12.0 */
 const GATEWAY_MAP_PRIMARY="https://myislemap.com/assets/gateway-map.webp?v=20260809v1";
 const GATEWAY_MAP_FALLBACK="https://raw.githubusercontent.com/klong-dev/IsleLiveMap/main/src/TheIsleOverlay.App/Assets/GatewayMap.webp";
 const GATEWAY_MAP_WIDTH=7800,GATEWAY_MAP_HEIGHT=7817;
@@ -710,6 +711,43 @@ const GATEWAY_MAP_WIDTH=7800,GATEWAY_MAP_HEIGHT=7817;
 // World X/Y are horizontal Unreal coordinates; Z is altitude.
 const GATEWAY_REFERENCE_FIT={originX:0,originY:0,worldScale:100000,u:[100/1112,0,505/1112],v:[0,100/1116,607/1116],rmsPx:null,maxPx:null,source:"reference"};
 const GATEWAY_CALIBRATION_KEY="primeval_refuge_gateway_calibration_v1";
+
+const GATEWAY_LAYER_KEY="primeval_refuge_gateway_layers_v1";
+const GATEWAY_REFERENCE_AREAS=[
+{name:"NE Cape",u:.8469,v:.1270},{name:"North Plains",u:.6892,v:.1773},{name:"Northern Jungle",u:.5679,v:.2482},
+{name:"Port Hill",u:.8498,v:.2715},{name:"Radio Tower",u:.9308,v:.3584},{name:"Fork Plains",u:.7032,v:.3817},
+{name:"Delta River",u:.7198,v:.4480},{name:"Highlands",u:.3926,v:.4684},{name:"Center Jungle",u:.5061,v:.4731},
+{name:"West Rail",u:.1259,v:.5215},{name:"East Jungle",u:.7140,v:.5313},{name:"Delta",u:.6119,v:.5560},
+{name:"Mudflats",u:.1888,v:.6747},{name:"South Plains",u:.1930,v:.7711},{name:"Pits",u:.1776,v:.8087},
+{name:"Swamp",u:.5036,v:.8074},{name:"Sandbank Bay",u:.8175,v:.5428},{name:"Southern Beach",u:.4627,v:.8692}
+];
+const GATEWAY_REFERENCE_ZONES=[
+{name:"Delta",kind:"migration",shape:"polygon",points:[[.6205,.4749],[.652,.457],[.6844,.4471],[.6915,.4534],[.6924,.4606],[.6888,.4677],[.6583,.4875],[.6268,.5152],[.625,.5287],[.6367,.5493],[.679,.5815],[.6871,.5959],[.6835,.6111],[.6835,.6478],[.6736,.6568],[.661,.6631],[.6484,.6595],[.6457,.6326],[.634,.6237],[.6115,.6183],[.5881,.6048],[.5746,.5887],[.5629,.5493],[.5621,.5224]]},
+{name:"East Jungle",kind:"migration",shape:"polygon",points:[[.6808,.457],[.7473,.457],[.7473,.6057],[.6808,.6057]]},
+{name:"Highlands",kind:"migration",shape:"polygon",points:[[.4371,.3987],[.4784,.448],[.3462,.5376],[.3085,.4892]]},
+{name:"NE Cape",kind:"migration",shape:"polygon",points:[[.7842,.0493],[.9182,.0493],[.9182,.2007],[.7842,.2007]]},
+{name:"South Plains",kind:"migration",shape:"polygon",points:[[.1214,.7231],[.143,.7115],[.1664,.7097],[.1781,.7294],[.1862,.75],[.2059,.7608],[.2284,.7554],[.2464,.7697],[.2608,.8091],[.2716,.8575],[.2572,.8701],[.17,.8163],[.1448,.7858],[.1214,.7464]]},
+{name:"Swamp",kind:"migration",shape:"polygon",points:[[.4272,.7473],[.58,.7473],[.58,.8674],[.4272,.8674]]},
+{name:"Center Jungle",kind:"patrol",shape:"polygon",points:[[.4955,.4507],[.5162,.4507],[.5162,.4955],[.4964,.4955]]},
+{name:"Delta",kind:"patrol",shape:"polygon",points:[[.6007,.5394],[.6205,.5385],[.6232,.5726],[.6034,.5735]]},
+{name:"Delta River",kind:"patrol",shape:"polygon",points:[[.7248,.4292],[.7401,.4453],[.7149,.4668],[.6996,.4507]]},
+{name:"Fork Plains",kind:"patrol",shape:"polygon",points:[[.6844,.3638],[.7221,.3638],[.7221,.3996],[.6844,.3996]]},
+{name:"Highlands",kind:"patrol",shape:"polygon",points:[[.4065,.3808],[.4218,.3987],[.4083,.4104],[.3921,.3916]]},
+{name:"Mudflats",kind:"patrol",shape:"circle",center:[.1888,.6747],radius:.012},
+{name:"NE Cape",kind:"patrol",shape:"polygon",points:[[.8462,.0824],[.8705,.0887],[.848,.1729],[.8228,.164]]},
+{name:"North Plains",kind:"patrol",shape:"polygon",points:[[.6673,.1586],[.705,.1586],[.7059,.1873],[.7005,.1909],[.6673,.1909]]},
+{name:"Northern Jungle",kind:"patrol",shape:"polygon",points:[[.5495,.2312],[.5863,.2312],[.5863,.2652],[.5495,.2652]]},
+{name:"Pits",kind:"patrol",shape:"polygon",points:[[.1241,.707],[.1412,.7348],[.17,.7545],[.2194,.7715],[.2032,.802],[.2518,.7984],[.2293,.8566],[.2392,.9077],[.1942,.8557],[.1259,.8772],[.0558,.8306]]},
+{name:"Port Hill",kind:"patrol",shape:"circle",center:[.8498,.2715],radius:.012},
+{name:"Radio Tower",kind:"patrol",shape:"circle",center:[.9308,.3584],radius:.012},
+{name:"Sandbank Bay",kind:"patrol",shape:"polygon",points:[[.7941,.5278],[.8444,.5421],[.8408,.5573],[.7905,.5439]]},
+{name:"Southern Beach",kind:"patrol",shape:"polygon",points:[[.4568,.8432],[.4901,.8746],[.4685,.8952],[.4353,.8638]]},
+{name:"Swamp",kind:"patrol",shape:"polygon",points:[[.5656,.7133],[.5989,.7133],[.5989,.7599],[.5656,.7599]]},
+{name:"West Rail",kind:"patrol",shape:"polygon",points:[[.1079,.4857],[.1439,.4857],[.1439,.5573],[.1079,.5573]]}
+];
+function loadGatewayLayerState(){try{return{names:true,migration:true,patrol:false,...JSON.parse(localStorage.getItem(GATEWAY_LAYER_KEY)||"{}")};}catch{return{names:true,migration:true,patrol:false};}}
+let gatewayLayerState=loadGatewayLayerState();
+
 let gatewayMapZoom=1,gatewayMapPanX=0,gatewayMapPanY=0,gatewayMapDrag=null,gatewayMapCalibrationMode=false,gatewayMapImageFallbackUsed=false;
 let gatewayCalibrationAnchors=loadGatewayCalibrationAnchors(),gatewayCalibrationFit=null;
 function clamp(n,a,b){return Math.max(a,Math.min(b,n));}
@@ -747,6 +785,13 @@ function activeGatewayFit(){return gatewayCalibrationFit||GATEWAY_REFERENCE_FIT;
 function gatewayCurrentPlayer(){return lastLiveLocationData?.online&&lastLiveLocationData?.player?lastLiveLocationData.player:null;}
 function gatewayTracking(){return lastLiveLocationData?.tracking||null;}
 function formatWorld(n){return Number.isFinite(Number(n))?Number(n).toFixed(1):"—";}
+
+function pointInGatewayPolygon(point,points){if(!point||!Array.isArray(points)||points.length<3)return false;let inside=false;for(let i=0,j=points.length-1;i<points.length;j=i++){const xi=points[i][0],yi=points[i][1],xj=points[j][0],yj=points[j][1];const hit=((yi>point.v)!==(yj>point.v))&&(point.u<(xj-xi)*(point.v-yi)/((yj-yi)||1e-12)+xi);if(hit)inside=!inside;}return inside;}
+function gatewayZoneContains(zone,point){if(!zone||!point)return false;if(zone.shape==="circle"){const dx=point.u-zone.center[0],dy=point.v-zone.center[1];return Math.hypot(dx,dy)<=zone.radius;}return pointInGatewayPolygon(point,zone.points);}
+function currentGatewayContext(point){if(!point||!Number.isFinite(point.u)||!Number.isFinite(point.v))return{area:"—",zones:[]};const zones=GATEWAY_REFERENCE_ZONES.filter(z=>gatewayZoneContains(z,point));const preferred=zones.find(z=>z.kind==="migration")||zones[0]||null;let nearest=null,dist=Infinity;for(const a of GATEWAY_REFERENCE_AREAS){const d=Math.hypot(point.u-a.u,point.v-a.v);if(d<dist){nearest=a;dist=d;}}const area=preferred?.name||(nearest?(dist<.065?nearest.name:`Nearest: ${nearest.name}`):"Gateway");return{area,zones,nearest,distance:dist};}
+function renderGatewayReferenceLayers(){const zoneHost=$("gatewayMapZones"),labelHost=$("gatewayMapLabels");if(!zoneHost||!labelHost)return;zoneHost.innerHTML="";labelHost.innerHTML="";const p=gatewayCurrentPlayer(),fit=activeGatewayFit(),q=p&&fit?applyGatewayTransform(fit,p.location?.x,p.location?.y):null,visible=GATEWAY_REFERENCE_ZONES.filter(z=>gatewayLayerState[z.kind]);if(visible.length){const ns="http://www.w3.org/2000/svg",svg=document.createElementNS(ns,"svg");svg.setAttribute("viewBox","0 0 1000 1000");svg.setAttribute("preserveAspectRatio","none");svg.classList.add("gateway-zone-svg");visible.forEach(z=>{let el;if(z.shape==="circle"){el=document.createElementNS(ns,"circle");el.setAttribute("cx",z.center[0]*1000);el.setAttribute("cy",z.center[1]*1000);el.setAttribute("r",z.radius*1000);}else{el=document.createElementNS(ns,"polygon");el.setAttribute("points",z.points.map(p=>`${p[0]*1000},${p[1]*1000}`).join(" "));}el.classList.add("gateway-zone-shape",`zone-${z.kind}`);if(q&&gatewayZoneContains(z,q))el.classList.add("zone-current");el.dataset.zone=z.name;svg.append(el);});zoneHost.append(svg);}if(gatewayLayerState.names)GATEWAY_REFERENCE_AREAS.forEach(a=>{const el=document.createElement("div");el.className="gateway-area-label";el.style.left=(a.u*100)+"%";el.style.top=(a.v*100)+"%";el.textContent=a.name;labelHost.append(el);});}
+function saveGatewayLayerState(){localStorage.setItem(GATEWAY_LAYER_KEY,JSON.stringify(gatewayLayerState));if($("mapLayerNames"))$("mapLayerNames").checked=Boolean(gatewayLayerState.names);if($("mapLayerMigration"))$("mapLayerMigration").checked=Boolean(gatewayLayerState.migration);if($("mapLayerPatrol"))$("mapLayerPatrol").checked=Boolean(gatewayLayerState.patrol);}
+
 function renderGatewayCalibrationList(){
   const host=$("mapCalibrationList");if(!host)return;host.innerHTML="";gatewayCalibrationAnchors.forEach((p,i)=>{const row=document.createElement("div");row.className="map-calibration-item";row.innerHTML=`<div class="map-calibration-index">${i+1}</div><div class="map-calibration-main"><strong>${escapeHtml(p.label||`Point ${i+1}`)}</strong><span>X ${p.worldX.toFixed(1)} · Y ${p.worldY.toFixed(1)} · map ${(p.mapU*100).toFixed(2)}%, ${(p.mapV*100).toFixed(2)}%</span></div><button type="button" data-cal-delete="${escapeHtml(p.id)}">×</button>`;host.append(row);});host.querySelectorAll("[data-cal-delete]").forEach(b=>b.onclick=()=>{gatewayCalibrationAnchors=gatewayCalibrationAnchors.filter(p=>p.id!==b.dataset.calDelete);saveGatewayCalibrationAnchors();renderGatewayMap();});
   if(!gatewayCalibrationAnchors.length){const e=document.createElement("div");e.className="community-empty";e.textContent="No calibration anchors saved in this browser yet.";host.append(e);}
@@ -762,7 +807,7 @@ function renderGatewayMap(){
   if($("mapCalibrationToggle"))$("mapCalibrationToggle").textContent=gatewayMapCalibrationMode?"Finish calibration":"Start calibration";
   if(status){if(gatewayMapCalibrationMode)status.textContent=gatewayCurrentPlayer()?"Calibration active — click the exact point where you are standing":"Calibration active — waiting for a live spawned dinosaur";else status.textContent=fit?"Custom calibration solved — add more anchors to improve accuracy":"Reference projection active — calibration is optional verification/tuning.";}
   if(fitEl){if(!fit){fitEl.className="map-calibration-fit "+(n?"warn":"good");fitEl.textContent=n?`Reference projection still active · ${n}/3 anchors captured · add widely separated points to calculate a custom fit.`:"Reference projection active · X: (X/1000 + 505) / 1112 · Y: (Y/1000 + 607) / 1116. Add anchors only to verify or tune it.";}else{fitEl.className="map-calibration-fit "+(fit.rmsPx<80?"good":"warn");fitEl.textContent=`Custom affine transform from ${n} anchors · RMS error ${fit.rmsPx.toFixed(1)} px · max ${fit.maxPx.toFixed(1)} px${fit.rmsPx>80?" · add wider-spread anchors":""}`;}}
-  renderGatewayCalibrationList();renderGatewayMapMarkers();updateGatewayMapLiveData();setGatewayMapTransform();
+  renderGatewayCalibrationList();renderGatewayReferenceLayers();renderGatewayMapMarkers();updateGatewayMapLiveData();setGatewayMapTransform();
 }
 function updateGatewayMapLiveData(checking=false){
   const p=gatewayCurrentPlayer(),t=gatewayTracking(),trackStatus=$("mapTrackingStatus"),state=$("mapLiveState"),note=$("mapLiveNote");if(!trackStatus||!state)return;
@@ -773,9 +818,11 @@ function updateGatewayMapLiveData(checking=false){
   else if(!p){trackStatus.textContent="No live dinosaur";trackStatus.className="status warn";state.textContent="Spawn into Primeval Refuge to appear here";}
   else{trackStatus.textContent="LIVE";trackStatus.className="status good";state.textContent=`${p.name||"Survivor"} · ${p.species||"Unknown species"}`;}
   for(const [id,val] of [["mapLiveSpecies",p?.species||"—"],["mapLiveGrowth",Number.isFinite(p?.growth)?p.growth+"%":"—"],["mapLiveX",p?formatWorld(p.location?.x):"—"],["mapLiveY",p?formatWorld(p.location?.y):"—"],["mapLiveZ",p?formatWorld(p.location?.z):"—"]])if($(id))$(id).textContent=val;
-  const mapFit=activeGatewayFit(),q=p&&mapFit?applyGatewayTransform(mapFit,p.location?.x,p.location?.y):null,onMap=q&&q.u>=0&&q.u<=1&&q.v>=0&&q.v<=1;if($("mapLiveMap"))$("mapLiveMap").textContent=onMap?`${(q.u*100).toFixed(2)}%, ${(q.v*100).toFixed(2)}%`:q?"Outside calibrated map":"—";
-  if(note){if(!p)note.textContent="Your position remains private; this page only receives the signed-in Steam account's dinosaur.";else if(!gatewayCalibrationFit)note.textContent="Live marker is using the established Gateway reference projection. Calibration anchors are optional and can verify or tune alignment.";else if(!onMap)note.textContent="The solved transform placed this coordinate outside the map. Add or correct calibration anchors.";else note.textContent=`Live marker active · RCON updated ${t?.lastUpdate?new Date(t.lastUpdate).toLocaleTimeString():"now"}.`;}
-  renderGatewayMapMarkers();
+  const mapFit=activeGatewayFit(),q=p&&mapFit?applyGatewayTransform(mapFit,p.location?.x,p.location?.y):null,onMap=q&&q.u>=0&&q.u<=1&&q.v>=0&&q.v<=1,ctx=onMap?currentGatewayContext(q):{area:"—",zones:[]};if($("mapLiveMap"))$("mapLiveMap").textContent=onMap?`${(q.u*100).toFixed(2)}%, ${(q.v*100).toFixed(2)}%`:q?"Outside calibrated map":"—";
+  if($("mapLiveArea"))$("mapLiveArea").textContent=ctx.area||"—";
+  if($("mapLiveZones"))$("mapLiveZones").textContent=ctx.zones?.length?[...new Set(ctx.zones.map(z=>`${z.name} ${z.kind==="migration"?"M":"P"}`))].join(" · "):"None at marker";
+  if(note){if(!p)note.textContent="Your position remains private; this page only receives the signed-in Steam account's dinosaur.";else if(!gatewayCalibrationFit)note.textContent=`Live marker active${ctx.area&&ctx.area!=="—"?` · ${ctx.area}`:""} · reference zones are not live activation data.`;else if(!onMap)note.textContent="The solved transform placed this coordinate outside the map. Add or correct calibration anchors.";else note.textContent=`Live marker active · ${ctx.area} · RCON updated ${t?.lastUpdate?new Date(t.lastUpdate).toLocaleTimeString():"now"}.`;}
+  renderGatewayReferenceLayers();renderGatewayMapMarkers();renderGuideLiveContext();
 }
 function addGatewayCalibrationAnchor(point){
   const p=gatewayCurrentPlayer();if(!p){toast("Spawn as a dinosaur before adding a calibration point");return;}const label=String($("mapCalibrationName")?.value||"").trim().slice(0,40)||`Point ${gatewayCalibrationAnchors.length+1}`;
@@ -793,6 +840,12 @@ function initGatewayMap(){
   const finish=e=>{if(!gatewayMapDrag||gatewayMapDrag.id!==e.pointerId)return;const drag=gatewayMapDrag;gatewayMapDrag=null;vp.classList.remove("dragging");if(!drag.moved&&gatewayMapCalibrationMode){const q=mapPointFromClient(e.clientX,e.clientY);if(q)addGatewayCalibrationAnchor(q);}};vp.addEventListener("pointerup",finish);vp.addEventListener("pointercancel",finish);
   window.addEventListener("resize",syncGatewayMapSize);renderGatewayMap();
 }
+
+
+/* Primeval Refuge Guide v0.12.0 */
+function guideSpeciesRole(player){const name=String(player?.species||"").toLowerCase();const species=SPECIES.find(s=>s.slug===name)||SPECIES.find(s=>s.name.toLowerCase()===name);return species?.category||"Survivor";}
+function renderGuideLiveContext(){const p=gatewayCurrentPlayer(),fit=activeGatewayFit(),q=p&&fit?applyGatewayTransform(fit,p.location?.x,p.location?.y):null,onMap=q&&q.u>=0&&q.u<=1&&q.v>=0&&q.v<=1,ctx=onMap?currentGatewayContext(q):{area:"—",zones:[]},role=guideSpeciesRole(p),growth=Number(p?.growth);if($("guideLiveSpecies"))$("guideLiveSpecies").textContent=p?.species||"—";if($("guideLiveGrowth"))$("guideLiveGrowth").textContent=Number.isFinite(growth)?growth+"%":"—";if($("guideLiveRole"))$("guideLiveRole").textContent=p?role:"—";if($("guideLiveArea"))$("guideLiveArea").textContent=ctx.area||"—";if($("guideLiveSummary"))$("guideLiveSummary").textContent=p?`${p.name||"Survivor"} · ${p.species||"Dinosaur"} · ${Number.isFinite(growth)?growth+"% growth":"live"}`:"Spawn into Primeval Refuge for live guidance";const title=$("guideNowTitle"),list=$("guideNowList");if(!title||!list)return;let advice=[];if(!p){title.textContent="Quick-start priorities";advice=["Keep food, water and stamina healthy before taking risks.","Use scent and the compass to navigate instead of sprinting blindly.","Open the Map tab while moving so area names start becoming familiar."];}else{const young=Number.isFinite(growth)&&growth<35,mid=Number.isFinite(growth)&&growth>=35&&growth<75;title.textContent=young?`Growing ${p.species}: survive first`:`Playing ${p.species}: current priorities`;if(young)advice.push("Prioritise safe food, water and growth; avoid unnecessary adult encounters and exposed travel.");else if(mid)advice.push("You have more capability now, but keep an escape route and enough stamina to disengage.");else advice.push("Maintain diet, water and stamina before committing to fights, nesting or long travel.");const r=role.toLowerCase();if(r.includes("herbivore"))advice.push("Use migration cues and reference zones to find better plant/diet opportunities; young herbivores should learn sanctuary cues.");else if(r.includes("aquatic"))advice.push("Use waterways as your main movement network and learn crossings, bends and shore access before taking long overland risks.");else if(r.includes("flyer"))advice.push("Protect flight stamina and choose safe landing/drinking spots before you are forced down.");else if(r.includes("omnivore"))advice.push("Use your flexible diet deliberately: fill nutrient gaps instead of eating only the easiest food.");else advice.push("Scent, carcass signs and patrol activity can help find food, but they can also lead you directly into stronger predators.");if(ctx.area&&ctx.area!=="—")advice.push(`You are currently around ${ctx.area}; use the Map tab to connect what you see in-game with the terrain name.`);if(ctx.zones?.length)advice.push(`Your marker overlaps reference zone geometry for ${[...new Set(ctx.zones.map(z=>z.name))].join(", ")}. Treat it as a navigation clue, not confirmed live activation.`);}list.innerHTML=advice.map(x=>`<li>${escapeHtml(x)}</li>`).join("");}
+function filterGuideCards(){const q=String($("guideSearch")?.value||"").trim().toLowerCase(),cards=[...document.querySelectorAll(".guide-card")];let shown=0;cards.forEach(card=>{const hay=(card.dataset.guideTags+" "+card.textContent).toLowerCase(),ok=!q||hay.includes(q);card.hidden=!ok;if(ok)shown++;});const grid=$("guideGrid");if(grid)grid.classList.toggle("no-results",shown===0);}
 
 let statusRefreshBusy=false;
 async function refreshServerStatus(){
@@ -873,7 +926,7 @@ async function applySkin(){
 }
 
 
-buildSpecies();buildColors();buildPresets();buildCloudFilters();buildCommunitySpecies();refreshSaved();renderCloudLibrary();renderPublishedMine();renderApplyHistory();readAuthHash();renderAll();initGatewayMap();setAppPage(currentPageFromUrl(),false);refreshMe();refreshServerStatus();loadSharedPublicationFromUrl();refreshCommunity(true);
+buildSpecies();buildColors();buildPresets();buildCloudFilters();buildCommunitySpecies();refreshSaved();renderCloudLibrary();renderPublishedMine();renderApplyHistory();readAuthHash();renderAll();saveGatewayLayerState();initGatewayMap();setAppPage(currentPageFromUrl(),false);refreshMe();refreshServerStatus();loadSharedPublicationFromUrl();refreshCommunity(true);renderGuideLiveContext();
 setInterval(refreshServerStatus,10000);
 setInterval(()=>{if(me&&document.visibilityState==="visible")refreshLiveLocation(true);},5000);
 
@@ -910,6 +963,14 @@ if($("mapCalibrationToggle"))$("mapCalibrationToggle").onclick=()=>{gatewayMapCa
 if($("mapDeleteLast"))$("mapDeleteLast").onclick=()=>{if(!gatewayCalibrationAnchors.length)return toast("No calibration anchors to delete");gatewayCalibrationAnchors.pop();saveGatewayCalibrationAnchors();renderGatewayMap();};
 if($("mapClearCalibration"))$("mapClearCalibration").onclick=()=>{if(!gatewayCalibrationAnchors.length)return;if(!confirm("Clear all Gateway calibration anchors saved in this browser?"))return;gatewayCalibrationAnchors=[];saveGatewayCalibrationAnchors();renderGatewayMap();toast("Calibration cleared");};
 if($("mapCopyCalibration"))$("mapCopyCalibration").onclick=copyGatewayCalibration;
+
+if($("mapLayerNames"))$("mapLayerNames").onchange=e=>{gatewayLayerState.names=e.target.checked;saveGatewayLayerState();renderGatewayReferenceLayers();};
+if($("mapLayerMigration"))$("mapLayerMigration").onchange=e=>{gatewayLayerState.migration=e.target.checked;saveGatewayLayerState();renderGatewayReferenceLayers();updateGatewayMapLiveData();};
+if($("mapLayerPatrol"))$("mapLayerPatrol").onchange=e=>{gatewayLayerState.patrol=e.target.checked;saveGatewayLayerState();renderGatewayReferenceLayers();updateGatewayMapLiveData();};
+if($("guideSearch"))$("guideSearch").addEventListener("input",filterGuideCards);
+if($("guideClearSearch"))$("guideClearSearch").onclick=()=>{$("guideSearch").value="";filterGuideCards();$("guideSearch").focus();};
+if($("guideOpenMap"))$("guideOpenMap").onclick=()=>setAppPage("map",true);
+
 $("communitySearch").addEventListener("input",renderCommunity);$("communitySpecies").onchange=renderCommunity;$("communitySort").onchange=renderCommunity;$("refreshCommunity").onclick=()=>refreshCommunity(false);
 $("communityFavoritesOnly").onclick=()=>{$("communityFavoritesOnly").classList.toggle("active");$("communityFavoritesOnly").textContent=$("communityFavoritesOnly").classList.contains("active")?"★ My favourites":"☆ My favourites";renderCommunity();};
 $("communityClear").onclick=()=>{$("communitySearch").value="";$("communitySpecies").value="";$("communitySort").value="new";$("communityFavoritesOnly").classList.remove("active");$("communityFavoritesOnly").textContent="☆ My favourites";communityTagFilter="";renderCommunity();};

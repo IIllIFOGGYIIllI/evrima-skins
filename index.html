@@ -6,7 +6,7 @@
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
 <meta content="#0b0e0a" name="theme-color"/>
 <title>Primeval Refuge | Evrima Skin Studio</title>
-<link href="./styles.css?v=0110" rel="stylesheet"/>
+<link href="./styles.css?v=0120" rel="stylesheet"/>
 <script type="importmap">
 {
   "imports": {
@@ -97,7 +97,7 @@
 @media(max-width:700px){
   html{scroll-padding-top:72px}body{padding:7px;padding-bottom:calc(82px + env(safe-area-inset-bottom))}.shell{width:100%;overflow:visible}
   .topbar{gap:9px;margin-bottom:8px}.topbar h1{font-size:clamp(28px,11vw,42px)}.topbar p{font-size:11px;line-height:1.35}.statuses{gap:5px}.status{padding:6px 8px;font-size:8px}
-  .app-tabs{position:fixed;left:0;right:0;bottom:0;top:auto;z-index:100;margin:0;padding:7px max(7px,env(safe-area-inset-right)) calc(7px + env(safe-area-inset-bottom)) max(7px,env(safe-area-inset-left));display:grid;grid-template-columns:repeat(5,1fr);gap:5px;background:rgba(8,11,8,.97);border-top:1px solid #4d4935;box-shadow:0 -8px 28px rgba(0,0,0,.45);overflow:visible}
+  .app-tabs{position:fixed;left:0;right:0;bottom:0;top:auto;z-index:100;margin:0;padding:7px max(7px,env(safe-area-inset-right)) calc(7px + env(safe-area-inset-bottom)) max(7px,env(safe-area-inset-left));display:grid;grid-template-columns:repeat(6,1fr);gap:5px;background:rgba(8,11,8,.97);border-top:1px solid #4d4935;box-shadow:0 -8px 28px rgba(0,0,0,.45);overflow:visible}
   .app-tabs button{min-width:0;min-height:46px;padding:7px 4px;font-size:9px;white-space:normal}.app-tabs-spacer,.app-tab-note{display:none}
   .page-heading{padding:12px}.page-heading h2{font-size:22px}.page-heading p{font-size:10px}
   .panel,.publish-card,.community-toolbar,.community-card{border-left-width:1px;border-right-width:1px}.preview-panel,.editor-panel{padding:11px}
@@ -132,7 +132,7 @@
 <div class="statuses brand-statuses">
 <span class="status warn" id="apiStatus">API checking…</span>
 <span class="status warn" id="serverStatus">Bridge checking…</span>
-<span class="status">Web v0.11.0</span>
+<span class="status">Web v0.12.0</span>
 </div>
 </div>
 </header><nav aria-label="Skin Studio sections" class="app-tabs">
@@ -140,9 +140,10 @@
 <button data-page="library" type="button">My Library</button>
 <button data-page="community" type="button">Community</button>
 <button data-page="map" type="button">Map</button>
+<button data-page="guide" type="button">Guide</button>
 <button data-page="publishing" type="button">Publish</button>
 <span class="app-tabs-spacer"></span>
-<span class="app-tab-note">Browse · save · map · apply</span>
+<span class="app-tab-note">Browse · save · map · guide · apply</span>
 </nav>
 <section class="app-page active" data-app-page="studio" id="page-studio"><main class="creator">
 <section class="preview-panel panel">
@@ -408,29 +409,32 @@
 </section>
 <section class="app-page" data-app-page="map" id="page-map">
 <main class="page-shell map-page-shell">
-<div class="page-heading map-page-heading"><div><div class="kicker">GATEWAY LIVE MAP</div><h2>Primeval Refuge Map</h2><p>Your live dinosaur position comes directly from Evrima RCON and uses an established Gateway projection immediately. Calibration mode lets you verify or fine-tune that alignment against exact locations in-game.</p></div><div class="map-heading-status"><span class="status warn" id="mapTrackingStatus">Waiting for live data</span><span class="status" id="mapCalibrationBadge">0 anchors</span></div></div>
+<div class="page-heading map-page-heading"><div><div class="kicker">GATEWAY LIVE MAP</div><h2>Primeval Refuge Map</h2><p>Your live dinosaur position comes directly from Evrima RCON. Toggle Gateway area names and reference migration/patrol geometry to learn the map while you play.</p></div><div class="map-heading-status"><span class="status warn" id="mapTrackingStatus">Waiting for live data</span><span class="status" id="mapCalibrationBadge">0 anchors</span></div></div>
 <div class="gateway-map-layout">
 <section class="panel gateway-map-panel">
 <div class="gateway-map-toolbar">
 <div class="gateway-map-toolbar-left"><button id="mapZoomOut" type="button">−</button><button id="mapZoomReset" type="button">Reset view</button><button id="mapZoomIn" type="button">+</button><span id="mapZoomLabel">100%</span></div>
-<div class="gateway-map-toolbar-right"><button id="mapCenterMe" type="button">Center on me</button><button class="primary" id="mapCalibrationToggle" type="button">Start calibration</button></div>
+<div class="gateway-map-toolbar-right"><div class="map-layer-controls" aria-label="Map layers"><label><input id="mapLayerNames" type="checkbox" checked/> Names</label><label><input id="mapLayerMigration" type="checkbox" checked/> Migration</label><label><input id="mapLayerPatrol" type="checkbox"/> Patrol</label></div><button id="mapCenterMe" type="button">Center on me</button><button class="primary" id="mapCalibrationToggle" type="button">Start calibration</button></div>
 </div>
 <div class="gateway-map-viewport" id="gatewayMapViewport" aria-label="Interactive Gateway map">
 <div class="gateway-map-stage" id="gatewayMapStage">
 <img id="gatewayMapImage" alt="Gateway map" draggable="false"/>
 <div class="gateway-map-grid" aria-hidden="true"></div>
+<div class="gateway-map-zones" id="gatewayMapZones" aria-hidden="true"></div>
+<div class="gateway-map-labels" id="gatewayMapLabels" aria-hidden="true"></div>
 <div class="gateway-map-markers" id="gatewayMapMarkers"></div>
 </div>
 <div class="map-cursor-readout" id="mapCursorReadout">Move over the map for map coordinates</div>
 <div class="map-loading" id="mapLoading">Loading Gateway map…</div>
 </div>
-<div class="gateway-map-credit">Gateway map texture source: <a href="https://myislemap.com/" target="_blank" rel="noopener">MyIsleMap</a> · projection reference: <a href="https://github.com/klong-dev/IsleLiveMap" target="_blank" rel="noopener">IsleLiveMap</a> · calibration data stays in this browser during this calibration build.</div>
+<div class="gateway-map-credit">Gateway texture: <a href="https://myislemap.com/" target="_blank" rel="noopener">MyIsleMap</a> · projection and reference-zone geometry adapted from MIT-licensed <a href="https://github.com/klong-dev/IsleLiveMap" target="_blank" rel="noopener">IsleLiveMap</a>. Zone geometry is a reference snapshot, not live Primeval Refuge zone state.</div>
 </section>
 <aside class="gateway-map-side">
 <section class="panel map-live-panel">
 <div class="section-head compact"><div><div class="kicker">MY LIVE DINOSAUR</div><span class="section-sub" id="mapLiveState">Waiting for Steam sign-in</span></div><button id="mapRefreshLive" type="button">Refresh</button></div>
-<div class="map-live-grid"><div><span>Species</span><b id="mapLiveSpecies">—</b></div><div><span>Growth</span><b id="mapLiveGrowth">—</b></div><div><span>X</span><b id="mapLiveX">—</b></div><div><span>Y</span><b id="mapLiveY">—</b></div><div><span>Z</span><b id="mapLiveZ">—</b></div><div><span>Map</span><b id="mapLiveMap">—</b></div></div>
-<div class="map-live-note" id="mapLiveNote">The live marker uses the established Gateway reference projection immediately; calibration anchors can verify or tune alignment.</div>
+<div class="map-live-grid"><div><span>Species</span><b id="mapLiveSpecies">—</b></div><div><span>Growth</span><b id="mapLiveGrowth">—</b></div><div><span>Area</span><b id="mapLiveArea">—</b></div><div><span>Reference zones</span><b id="mapLiveZones">—</b></div><div><span>X</span><b id="mapLiveX">—</b></div><div><span>Y</span><b id="mapLiveY">—</b></div><div><span>Z</span><b id="mapLiveZ">—</b></div><div><span>Map</span><b id="mapLiveMap">—</b></div></div>
+<div class="map-live-note" id="mapLiveNote">The live marker uses the established Gateway reference projection. Zone overlays are reference geometry, not a claim that a zone is currently active on Primeval Refuge.</div>
+<div class="map-zone-legend"><span><i class="migration"></i> Migration reference</span><span><i class="patrol"></i> Patrol reference</span><small>Current live activation is not exposed by the RCON feed yet.</small></div>
 </section>
 <section class="panel map-calibration-panel">
 <div class="section-head compact"><div><div class="kicker">ADMIN CALIBRATION MODE</div><span class="section-sub" id="mapCalibrationStatus">Stand at a recognisable location, then start calibration.</span></div></div>
@@ -444,6 +448,35 @@
 </div>
 </main>
 </section>
+
+<section class="app-page" data-app-page="guide" id="page-guide">
+<main class="page-shell guide-page-shell">
+<div class="page-heading guide-page-heading">
+<div><div class="kicker">EVRIMA SURVIVAL GUIDE</div><h2>Primeval Refuge Guide</h2><p>A practical quick-reference for learning Evrima while you play. It uses your live dinosaur when available and keeps exact server-state claims separate from general game guidance.</p></div>
+<div class="guide-heading-actions"><input id="guideSearch" type="search" placeholder="Search guide…"/><button id="guideClearSearch" type="button">Clear</button></div>
+</div>
+<section class="panel guide-live-card">
+<div class="section-head compact"><div><div class="kicker">WHAT SHOULD I DO RIGHT NOW?</div><span class="section-sub" id="guideLiveSummary">Spawn into Primeval Refuge for live guidance</span></div><button id="guideOpenMap" type="button">Open Map</button></div>
+<div class="guide-live-stats"><div><span>Species</span><b id="guideLiveSpecies">—</b></div><div><span>Growth</span><b id="guideLiveGrowth">—</b></div><div><span>Role</span><b id="guideLiveRole">—</b></div><div><span>Area</span><b id="guideLiveArea">—</b></div></div>
+<h3 id="guideNowTitle">Quick-start priorities</h3>
+<ul id="guideNowList" class="guide-now-list"><li>Keep food, water and stamina healthy before taking risks.</li><li>Use scent and the compass to navigate instead of sprinting blindly.</li><li>Learn one safe route at a time and use the live Map page to build map knowledge.</li></ul>
+</section>
+<div class="guide-grid" id="guideGrid">
+<article class="panel guide-card" data-guide-tags="start beginner spawn survival first minutes"><div class="guide-card-icon">01</div><div><h3>First 10 minutes</h3><p>Get oriented before travelling far. Check your character/status screen, identify water, scent for nearby resources, and avoid burning all your stamina just because the coast looks clear.</p><ul><li>Food + water + stamina are your basic survival buffer.</li><li>Move cautiously near water and open ground; both attract traffic.</li><li>If you are young, survival and diet progress matter more than winning fights.</li><li>Use the Map tab to learn the name of the area you are actually standing in.</li></ul></div></article>
+<article class="panel guide-card" data-guide-tags="controls keybinds scent compass navigation calls tab q h e g"><div class="guide-card-icon">02</div><div><h3>Controls & navigation</h3><p>Common default Evrima controls. Keybinds can change or be rebound, so the in-game controls menu remains authoritative.</p><ul><li><b>Q hold</b>: scent · <b>Q tap</b>: compass.</li><li><b>H</b>: lie down/rest · hold H for the safe-log sleep flow.</li><li><b>Tab</b>: character/status information.</li><li><b>E</b>: interact/use · <b>G</b>: grab/carry or take chunks where supported.</li><li><b>1–4</b>: broadcast/friendly/threat/help calls on common defaults.</li></ul></div></article>
+<article class="panel guide-card" data-guide-tags="diet nutrients alpha beta gamma food growth scent"><div class="guide-card-icon">03</div><div><h3>Diet & nutrients</h3><p>Eating the right foods does more than fill your stomach. Nutrients influence growth and useful survival bonuses, so a balanced diet is usually worth the extra travel.</p><ul><li>Watch the α / β / γ nutrient slots rather than eating only whatever is closest.</li><li>Better nutrient coverage improves growth and other bonuses.</li><li>Herbivore food availability can depend heavily on zones.</li><li>Do not arrive at a fight starving, dehydrated or exhausted.</li></ul></div></article>
+<article class="panel guide-card" data-guide-tags="migration patrol zones active sanctuary juvenile mushroom"><div class="guide-card-icon">04</div><div><h3>Migration, patrol & sanctuary</h3><p>These systems are navigation and resource cues, not guaranteed safety. The map overlays on this site show reference locations; live zone activation is not currently supplied by Primeval Refuge RCON.</p><ul><li><b>Migration</b>: especially important for herbivore diet opportunities.</li><li><b>Patrol</b>: smaller activity/resource areas; carnivores can use them as hunting leads.</li><li><b>Sanctuary</b>: intended to help young dinosaurs; scent for the tree-style sanctuary cue.</li><li>Other players know these systems too, so a useful zone can also become dangerous.</li></ul></div></article>
+<article class="panel guide-card" data-guide-tags="growth juvenile subadult adult rest stamina sleep"><div class="guide-card-icon">05</div><div><h3>Growing safely</h3><p>Growth is a survival objective, not an invitation to rush every encounter. Your ability to escape or absorb damage changes dramatically as you grow.</p><ul><li>Juveniles should prioritise concealment, diet and safe water access.</li><li>Rest when it is safe; do not enter unknown terrain with an empty stamina bar.</li><li>As you get larger, reassess routes that were safe when you were small.</li><li>Consistent survival is faster than repeatedly restarting.</li></ul></div></article>
+<article class="panel guide-card" data-guide-tags="bleed bleeding fracture health injury wounded rest"><div class="guide-card-icon">06</div><div><h3>Bleeding, fractures & injuries</h3><p>Do not treat every injury like ordinary HP loss. Bleeding and fractures can punish movement and turn an otherwise survivable fight into a death.</p><ul><li>Running while bleeding is generally a bad idea; disengage and rest when safe.</li><li>Low food, water and stamina make recovery situations worse.</li><li>Fractures can heavily reduce mobility and need time/rest to recover.</li><li>Winning the fight does not matter if you bleed out afterward.</li></ul></div></article>
+<article class="panel guide-card" data-guide-tags="combat fight pvp stamina ambush survival calls"><div class="guide-card-icon">07</div><div><h3>Combat survival</h3><p>Most deaths start before the first hit: bad positioning, no stamina, no escape route, or attacking something you did not understand.</p><ul><li>Know where you will retreat before committing.</li><li>Keep enough stamina to disengage.</li><li>Use terrain, water, vegetation and your species' movement strengths.</li><li>Do not assume a friendly call means the encounter is actually safe.</li></ul></div></article>
+<article class="panel guide-card" data-guide-tags="mutations mutation juvenile subadult adult inherited"><div class="guide-card-icon">08</div><div><h3>Mutations</h3><p>Mutations let you shape a dinosaur over its lifecycle. Some options unlock through play conditions and inherited slots can come from parents.</p><ul><li>Read the mutation description before locking in a choice.</li><li>Build around how you actually play rather than chasing a theoretical best build.</li><li>Later growth stages open additional lifecycle choices.</li><li>Mutation availability can change between game updates.</li></ul></div></article>
+<article class="panel guide-card" data-guide-tags="nest nesting courting eggs hatchling baby family"><div class="guide-card-icon">09</div><div><h3>Nesting & raising young</h3><p>Nesting is a full survival loop: court, prepare eggs, build and defend a nest, then keep hatchlings fed and alive.</p><ul><li>Good diet matters because gestation and raising young consume resources.</li><li>Eggs and nests can attract threats.</li><li>Young dinosaurs inherit diet benefits through feeding.</li><li>Do not start a nest somewhere you cannot reliably feed, drink and defend.</li></ul></div></article>
+<article class="panel guide-card" data-guide-tags="map location names gateway live tracking primeval refuge"><div class="guide-card-icon">10</div><div><h3>Using the Primeval Refuge Map</h3><p>The green marker is your Steam-authenticated dinosaur only. Area labels and reference-zone layers are there to teach Gateway without exposing every player on the server.</p><ul><li><b>Names</b> shows major Gateway area labels.</li><li><b>Migration / Patrol</b> toggles show reference geometry.</li><li>Your live card reports the closest known area and reference zones containing your marker.</li><li>Reference overlays are not labelled LIVE unless the server can provide authoritative activation data.</li></ul></div></article>
+</div>
+<div class="guide-sources">Guide references checked September 2026: <a href="https://www.evrimaquickguide.com/gameplay/keybinds-interface" target="_blank" rel="noopener">controls</a> · <a href="https://www.evrimaquickguide.com/gameplay/diet-food/diet-nutrients" target="_blank" rel="noopener">diet</a> · <a href="https://www.evrimaquickguide.com/gameplay/group-play/migrations-patrol-zones" target="_blank" rel="noopener">zones</a> · <a href="https://www.evrimaquickguide.com/gameplay/group-play/sanctuary" target="_blank" rel="noopener">sanctuary</a> · <a href="https://www.evrimaquickguide.com/gameplay/health-statuses/health-injuries" target="_blank" rel="noopener">injuries</a> · <a href="https://www.evrimaquickguide.com/gameplay/health-statuses/mutations" target="_blank" rel="noopener">mutations</a> · <a href="https://www.evrimaquickguide.com/gameplay/group-play/courting-nesting" target="_blank" rel="noopener">nesting</a>. Fan-maintained mechanics can change after game updates.</div>
+</main>
+</section>
+
 <section class="app-page" data-app-page="publishing" id="page-publishing">
 <main class="page-shell">
 <div class="page-heading"><div><div class="kicker">COMMUNITY PUBLISHING</div><h2>Publish skins</h2><p>Publish an explicit snapshot of one of your Steam-library skins. Editing the private original never changes the published copy until you press Update snapshot.</p></div></div>
@@ -480,6 +513,6 @@
 <div class="toast" id="toast"></div>
 <script src="./config.js"></script>
 <script src="./viewer3d.js?v=083" type="module"></script>
-<script src="./app.js?v=113"></script>
+<script src="./app.js?v=120"></script>
 </body>
 </html>
