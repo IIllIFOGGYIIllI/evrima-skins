@@ -132,7 +132,7 @@
 <div class="statuses brand-statuses">
 <span class="status warn" id="apiStatus">API checking…</span>
 <span class="status warn" id="serverStatus">Bridge checking…</span>
-<span class="status">Web v0.13.1</span>
+<span class="status">Web v0.13.2</span>
 </div>
 </div>
 </header><nav aria-label="Skin Studio sections" class="app-tabs">
@@ -465,40 +465,140 @@
 <span>Jump to:</span>
 <a href="#guide-symbols">Symbols</a><a href="#guide-start">First life</a><a href="#guide-controls">Controls</a><a href="#guide-scent">Scent</a><a href="#guide-diet">Diet</a><a href="#guide-zones">Zones</a><a href="#guide-growth">Growth</a><a href="#guide-combat">Combat</a><a href="#guide-injuries">Injuries</a><a href="#guide-mutations">Mutations</a><a href="#guide-nesting">Nesting</a><a href="#guide-prime">Prime / Elder</a><a href="#guide-map">Map</a>
 </nav>
-<section class="panel guide-symbol-panel exact-hud-panel" id="guide-symbols">
-<div class="section-head"><div><div class="kicker">EXACT EVRIMA SCENT + COMPASS REFERENCE</div><h3>What the symbols actually look like in-game</h3><span class="section-sub">These are captured Evrima HUD visuals — not emoji, text stand-ins, redraws or approximations. The numbered scent sheet is paired directly with the current icon meanings below.</span></div></div>
-<div class="exact-hud-reference-grid">
-<figure class="exact-hud-figure scent-sheet">
-<img src="https://images.steamusercontent.com/ugc/10676831718532591383/66B8CDEB0AF2D657E215C65BD9CAB5B35E05BB76/" alt="Exact in-game Evrima scent icons 1 through 16" loading="lazy" referrerpolicy="no-referrer" />
-<figcaption>Actual Evrima scent icons. The white numbers are only the reference key added to the screenshot; the cyan symbols are the in-game HUD icons.</figcaption>
-</figure>
-<div class="exact-scent-key" aria-label="Scent icon key">
-<div><b>1</b><span><strong>α nutrient</strong> — food that supplies Alpha / carbohydrates.</span></div>
-<div><b>2</b><span><strong>β nutrient</strong> — food that supplies Beta / protein.</span></div>
-<div><b>3</b><span><strong>γ nutrient</strong> — food that supplies Gamma / lipids.</span></div>
-<div><b>4</b><span><strong>All three nutrients</strong> — the three-way nutrient icon; currently associated with sanctuary mushrooms.</span></div>
-<div><b>5</b><span><strong>Egg</strong> — a gestated egg removed from a nest or left by a dead pregnant animal.</span></div>
-<div><b>6</b><span><strong>Bubbles / underwater forage</strong> — submerged forage activity; currently relevant to Beipiaosaurus.</span></div>
-<div><b>7</b><span><strong>Rotten carcass</strong> — a corpse that has decayed.</span></div>
-<div><b>8</b><span><strong>Branches</strong> — nesting material for species that construct stick nests.</span></div>
-<div><b>9</b><span><strong>Non-diet carcass</strong> — a corpse that is edible for hunger but is not one of your listed nutrient foods.</span></div>
-<div><b>10</b><span><strong>Water</strong> — water with a drink interaction. Scent can also indicate unsafe salt water, so identify the source before drinking.</span></div>
-<div><b>11</b><span><strong>Vomit</strong> — vomit left by another animal, including manually produced Ceratosaurus vomit.</span></div>
-<div><b>12</b><span><strong>Salt lick</strong> — salt used for status/diet management.</span></div>
-<div><b>13</b><span><strong>Bone</strong> — skeletal remains from a player carcass.</span></div>
-<div><b>14</b><span><strong>Torn meat</strong> — a separated meat piece that is not providing one of your listed nutrients.</span></div>
-<div><b>15</b><span><strong>Overpack</strong> — a group exceeding the species' normal group limit.</span></div>
-<div><b>16</b><span><strong>Non-diet plant</strong> — edible plant material not listed as one of your current nutrient foods.</span></div>
+<div class="guide-search-status" id="guideSearchStatus" aria-live="polite"></div>
+<section class="panel guide-symbol-panel exact-hud-panel guide-mode-quick" id="guide-symbols">
+<div class="section-head guide-symbol-head">
+  <div>
+    <div class="kicker">EXACT EVRIMA SCENT + COMPASS REFERENCE</div>
+    <h3>Recognise exactly what the game is showing you</h3>
+    <span class="section-sub">Every graphic in this section is an actual Evrima HUD capture. No emoji, redraws, replacement letters or approximated symbols are used.</span>
+  </div>
+  <div class="guide-view-toggle" role="group" aria-label="Guide symbol detail level">
+    <button id="guideQuickMode" class="active" type="button" aria-pressed="true">Quick reference</button>
+    <button id="guideLearnMode" type="button" aria-pressed="false">Learn it properly</button>
+  </div>
 </div>
+
+<div class="guide-exact-rule">
+  <span class="verified-dot" aria-hidden="true"></span>
+  <div><b>Verified capture rule</b><span>If we do not have a clean current in-game capture for a symbol, the Guide explains it in text instead of inventing a substitute.</span></div>
 </div>
-<div class="exact-zone-title"><div class="kicker">EXACT COMPASS ZONE MARKERS</div><h4>Migration, Patrol and Sanctuary</h4><p>These are actual compass captures. Learn the shapes, because Evrima does not replace them with “MZ / PZ / SZ” letters in-game.</p></div>
+
+<div class="exact-hud-overview">
+  <figure class="exact-hud-figure scent-sheet">
+    <div class="exact-image-label">Exact scent / compass glyph sheet</div>
+    <img src="https://images.steamusercontent.com/ugc/10676831718532591383/66B8CDEB0AF2D657E215C65BD9CAB5B35E05BB76/" alt="Exact in-game Evrima scent icons 1 through 16" loading="lazy" referrerpolicy="no-referrer" />
+    <figcaption><b>How to use this sheet:</b> find the shape you see on your in-game scent bar, note its white reference number here, then use the matching numbered card below. The white numbers were added only as a key; the cyan/red glyphs are the in-game visuals.</figcaption>
+  </figure>
+</div>
+
+<div class="exact-scent-title">
+  <div>
+    <div class="kicker">SCENT SYMBOL KEY</div>
+    <h4>Match the number, then read what to do</h4>
+  </div>
+  <span class="guide-mode-hint"><b>Quick reference</b> keeps this compact. <b>Learn it properly</b> adds context, response and where the cue appears.</span>
+</div>
+
+<div class="exact-scent-key" aria-label="Exact Evrima scent icon key">
+<article class="scent-card" data-guide-tags="alpha nutrient carbohydrate diet 1">
+  <b class="scent-number">1</b><div class="scent-card-copy"><h5>α nutrient — Alpha / carbohydrates</h5><p>Food that supplies your species' α nutrient.</p>
+  <div class="scent-expanded"><div><b>What it means</b><span>This food is one of the α nutrient sources currently listed for your dinosaur.</span></div><div><b>What to do</b><span>Use it when you need α or when building a balanced diet. Check Tab so you do not fill a nutrient you are already comfortable with.</span></div><div><b>Where you see it</b><span>On scent when an eligible α diet food is detectable.</span></div></div></div>
+</article>
+<article class="scent-card" data-guide-tags="beta nutrient protein diet 2">
+  <b class="scent-number">2</b><div class="scent-card-copy"><h5>β nutrient — Beta / protein</h5><p>Food that supplies your species' β nutrient.</p>
+  <div class="scent-expanded"><div><b>What it means</b><span>This food is one of the β nutrient sources for your current species.</span></div><div><b>What to do</b><span>Use it to fill or maintain β while balancing the other nutrient slots shown in Tab.</span></div><div><b>Where you see it</b><span>On scent when an eligible β diet food is nearby.</span></div></div></div>
+</article>
+<article class="scent-card" data-guide-tags="gamma nutrient lipid diet 3">
+  <b class="scent-number">3</b><div class="scent-card-copy"><h5>γ nutrient — Gamma / lipids</h5><p>Food that supplies your species' γ nutrient.</p>
+  <div class="scent-expanded"><div><b>What it means</b><span>This food belongs to the γ nutrient list for your dinosaur.</span></div><div><b>What to do</b><span>Use it when γ is the nutrient you need. Do not cross dangerous territory for it if hunger, thirst or stamina are already critical.</span></div><div><b>Where you see it</b><span>On scent when an eligible γ diet food is detectable.</span></div></div></div>
+</article>
+<article class="scent-card" data-guide-tags="all three nutrients sanctuary mushroom diet 4">
+  <b class="scent-number">4</b><div class="scent-card-copy"><h5>All three nutrients</h5><p>The three-way nutrient glyph, associated with combined-diet food such as sanctuary mushrooms.</p>
+  <div class="scent-expanded"><div><b>What it means</b><span>The detected food can contribute across all three nutrient types instead of representing a single α, β or γ source.</span></div><div><b>What to do</b><span>Check whether your dinosaur can use the source and whether entering the area is safe before committing to it.</span></div><div><b>Where you see it</b><span>On scent for the relevant combined-diet source.</span></div></div></div>
+</article>
+
+<article class="scent-card" data-guide-tags="egg nest gestated food 5">
+  <b class="scent-number">5</b><div class="scent-card-copy"><h5>Egg</h5><p>A gestated egg from a nest or a body.</p>
+  <div class="scent-expanded"><div><b>What it means</b><span>An egg exists nearby and may be interactable or edible depending on species and context.</span></div><div><b>What to do</b><span>Expect nesting activity or other players nearby. Treat the area as occupied until proven otherwise.</span></div><div><b>Where you see it</b><span>On scent when a detectable gestated egg is nearby.</span></div></div></div>
+</article>
+<article class="scent-card" data-guide-tags="bubbles underwater forage beipiaosaurus 6">
+  <b class="scent-number">6</b><div class="scent-card-copy"><h5>Bubbles / underwater forage</h5><p>Submerged forage activity; currently relevant to Beipiaosaurus.</p>
+  <div class="scent-expanded"><div><b>What it means</b><span>A forage opportunity exists underwater rather than on ordinary land terrain.</span></div><div><b>What to do</b><span>Approach with enough stamina to leave the water safely and stay alert for aquatic threats.</span></div><div><b>Where you see it</b><span>On scent where the supported underwater forage can be detected.</span></div></div></div>
+</article>
+<article class="scent-card" data-guide-tags="rotten carcass corpse decay food 7">
+  <b class="scent-number">7</b><div class="scent-card-copy"><h5>Rotten carcass</h5><p>A corpse has decayed into the rotten stage.</p>
+  <div class="scent-expanded"><div><b>What it means</b><span>The carcass is no longer fresh. Its usefulness and safety depend on your species.</span></div><div><b>What to do</b><span>Do not assume rotten meat is valid diet food for every dinosaur. The corpse also tells you players or prey have been active here.</span></div><div><b>Where you see it</b><span>On scent when a rotten carcass is within detection range.</span></div></div></div>
+</article>
+<article class="scent-card" data-guide-tags="branches nest nesting material 8">
+  <b class="scent-number">8</b><div class="scent-card-copy"><h5>Branches</h5><p>Nesting material for species that construct stick nests.</p>
+  <div class="scent-expanded"><div><b>What it means</b><span>Usable nesting material can be collected nearby.</span></div><div><b>What to do</b><span>Collect it only when you are actively building/maintaining a nest; otherwise it is navigation information rather than a survival priority.</span></div><div><b>Where you see it</b><span>On scent when supported nest material is detectable.</span></div></div></div>
+</article>
+
+<article class="scent-card" data-guide-tags="non diet carcass corpse edible hunger 9">
+  <b class="scent-number">9</b><div class="scent-card-copy"><h5>Non-diet carcass</h5><p>An edible carcass that is not one of your listed nutrient foods.</p>
+  <div class="scent-expanded"><div><b>What it means</b><span>You may be able to eat it for hunger, but it is not currently one of the nutrient foods shown for your dinosaur.</span></div><div><b>What to do</b><span>Use it for survival when needed, but do not mistake it for a nutrient target. Approach carcasses carefully because they attract traffic.</span></div><div><b>Where you see it</b><span>On scent for a detectable non-diet carcass.</span></div></div></div>
+</article>
+<article class="scent-card" data-guide-tags="water drinking fresh salt unsafe 10">
+  <b class="scent-number">10</b><div class="scent-card-copy"><h5>Water</h5><p>A water source with a drink interaction.</p>
+  <div class="scent-expanded"><div><b>What it means</b><span>Drinkable interaction is nearby, but scent alone does not make the shoreline safe.</span></div><div><b>What to do</b><span>Listen and look before exposing yourself. Keep escape stamina, avoid standing still longer than necessary, and confirm you are not following unsafe salt water.</span></div><div><b>Where you see it</b><span>On the scent/compass bar when a supported water source is detected.</span></div></div></div>
+</article>
+<article class="scent-card" data-guide-tags="vomit ceratosaurus sickness 11">
+  <b class="scent-number">11</b><div class="scent-card-copy"><h5>Vomit</h5><p>Vomit left by another animal, including manually produced Ceratosaurus vomit.</p>
+  <div class="scent-expanded"><div><b>What it means</b><span>Another dinosaur has recently interacted with or produced vomit in this area.</span></div><div><b>What to do</b><span>Treat it as recent-player information. Do not assume the source has left just because you cannot see it.</span></div><div><b>Where you see it</b><span>On scent when vomit is within the relevant detection range.</span></div></div></div>
+</article>
+<article class="scent-card" data-guide-tags="salt lick crystal rock diet status 12">
+  <b class="scent-number">12</b><div class="scent-card-copy"><h5>Salt lick</h5><p>The crystal/rock-style salt source used for status and diet management.</p>
+  <div class="scent-expanded"><div><b>What it means</b><span>A salt lick is nearby.</span></div><div><b>What to do</b><span>Use salt deliberately rather than automatically; check your current status and nutrient plan first.</span></div><div><b>Where you see it</b><span>On scent when a salt lick is detectable.</span></div></div></div>
+</article>
+
+<article class="scent-card" data-guide-tags="bone skeleton gore carcass 13">
+  <b class="scent-number">13</b><div class="scent-card-copy"><h5>Bone / skeletal remains</h5><p>Skeletal remains from a player carcass.</p>
+  <div class="scent-expanded"><div><b>What it means</b><span>A carcass has progressed to the bone stage.</span></div><div><b>What to do</b><span>Whether bones are useful depends on species/mechanics. Even when they are not food, they are a strong clue that feeding or combat happened here.</span></div><div><b>Where you see it</b><span>On scent when bone gore is detectable.</span></div></div></div>
+</article>
+<article class="scent-card" data-guide-tags="torn meat chunk food corpse 14">
+  <b class="scent-number">14</b><div class="scent-card-copy"><h5>Torn meat / chunk</h5><p>A separated meat piece that is not supplying one of your listed nutrients.</p>
+  <div class="scent-expanded"><div><b>What it means</b><span>Someone has torn or dropped a meat chunk nearby.</span></div><div><b>What to do</b><span>It can solve hunger, but a loose chunk is also evidence of recent feeding activity. Check the area before stopping to eat.</span></div><div><b>Where you see it</b><span>On scent when a detectable loose meat chunk is nearby.</span></div></div></div>
+</article>
+<article class="scent-card" data-guide-tags="overpack group limit players 15">
+  <b class="scent-number">15</b><div class="scent-card-copy"><h5>Overpack</h5><p>A group is exceeding the species' normal group limit.</p>
+  <div class="scent-expanded"><div><b>What it means</b><span>The nearby grouping state is beyond the normal species group limit represented by the game.</span></div><div><b>What to do</b><span>Expect more bodies, noise and food pressure than a normal group. If you are not part of it, give the area extra space.</span></div><div><b>Where you see it</b><span>On scent/compass when the overpack condition is represented nearby.</span></div></div></div>
+</article>
+<article class="scent-card" data-guide-tags="non diet plant herbivore edible 16">
+  <b class="scent-number">16</b><div class="scent-card-copy"><h5>Non-diet plant</h5><p>Edible plant material not listed as one of your current nutrient foods.</p>
+  <div class="scent-expanded"><div><b>What it means</b><span>The plant can be relevant for hunger/forage, but it is not one of the nutrient foods currently listed for you.</span></div><div><b>What to do</b><span>Use it when survival matters more than perfect diet, but keep looking for your proper nutrient sources when safe.</span></div><div><b>Where you see it</b><span>On scent for detectable non-diet plant material.</span></div></div></div>
+</article>
+</div>
+
+<div class="exact-zone-title">
+  <div class="kicker">EXACT COMPASS ZONE MARKERS</div>
+  <h4>Migration, Patrol and Sanctuary</h4>
+  <p>These are actual in-game compass captures. Memorise the silhouettes — Evrima does not replace them with “MZ”, “PZ” or “SZ” text on the scent bar.</p>
+</div>
+
 <div class="exact-zone-grid">
-<figure><img src="https://www.theisle.info/symbole1.jpeg" alt="Exact Evrima migration zone compass marker" loading="lazy" referrerpolicy="no-referrer"/><figcaption><b>Migration zone</b><span>Footprint/bird-like marks appear along the compass arc. When you enter the zone, the zone marks move toward the outer sides of the compass.</span></figcaption></figure>
-<figure><img src="https://www.theisle.info/patrolzone.webp" alt="Exact Evrima patrol zone compass marker" loading="lazy" referrerpolicy="no-referrer"/><figcaption><b>Patrol zone</b><span>The patrol marker appears as the paired circular/eye-like shapes shown here. Entering the zone shifts them toward the compass edges.</span></figcaption></figure>
-<figure><img src="https://www.theisle.info/sanctury.png" alt="Exact Evrima sanctuary compass marker" loading="lazy" referrerpolicy="no-referrer"/><figcaption><b>Sanctuary</b><span>The bent palm/plant silhouette is the sanctuary marker shown to eligible young animals.</span></figcaption></figure>
+<article class="exact-zone-card" data-guide-tags="migration zone compass footprints birds">
+  <div class="exact-zone-image"><img src="https://www.theisle.info/symbole1.jpeg" alt="Exact Evrima migration zone compass marker" loading="lazy" referrerpolicy="no-referrer"/></div>
+  <div class="exact-zone-copy"><span class="zone-type migration">Migration</span><h5>Migration zone marker</h5><p>Footprint/bird-like marks appear along the compass arc.</p>
+  <div class="scent-expanded"><div><b>What you see</b><span>The repeated small marks shown in this exact capture.</span></div><div><b>What it means</b><span>The compass is indicating a migration objective/zone.</span></div><div><b>When you enter</b><span>The zone marks move toward the outer sides of the compass, helping indicate that you have reached the zone.</span></div></div></div>
+</article>
+<article class="exact-zone-card" data-guide-tags="patrol zone compass circular eyes">
+  <div class="exact-zone-image"><img src="https://www.theisle.info/patrolzone.webp" alt="Exact Evrima patrol zone compass marker" loading="lazy" referrerpolicy="no-referrer"/></div>
+  <div class="exact-zone-copy"><span class="zone-type patrol">Patrol</span><h5>Patrol zone marker</h5><p>The paired circular/eye-like shapes shown in this exact capture.</p>
+  <div class="scent-expanded"><div><b>What you see</b><span>Two rounded markers positioned along the compass arc.</span></div><div><b>What it means</b><span>The compass is pointing you toward a patrol activity zone.</span></div><div><b>When you enter</b><span>The markers shift toward the compass edges as the zone state changes.</span></div></div></div>
+</article>
+<article class="exact-zone-card" data-guide-tags="sanctuary zone compass palm plant juvenile">
+  <div class="exact-zone-image"><img src="https://www.theisle.info/sanctury.png" alt="Exact Evrima sanctuary compass marker" loading="lazy" referrerpolicy="no-referrer"/></div>
+  <div class="exact-zone-copy"><span class="zone-type sanctuary">Sanctuary</span><h5>Sanctuary marker</h5><p>The bent palm/plant silhouettes shown in this exact capture.</p>
+  <div class="scent-expanded"><div><b>What you see</b><span>The large mirrored palm/plant shapes framing the compass.</span></div><div><b>What it means</b><span>An eligible young dinosaur is being guided toward a sanctuary.</span></div><div><b>Beginner response</b><span>Use it as a juvenile guidance objective, but still approach with normal survival awareness — an objective marker does not guarantee the route is safe.</span></div></div></div>
+</article>
 </div>
-<div class="exact-compass-direction"><b>Compass direction itself:</b> the scent line's sharp <strong>upward peak is North</strong> and the sharp <strong>downward notch is South</strong>. Evrima does not print N/E/S/W letters on the scent compass. East and West are inferred between those two reference points.</div>
-<div class="guide-symbol-note"><b>No substituted icons:</b> if an exact current in-game capture is not available, this guide will describe the mechanic in text rather than inventing a replacement symbol. Species-specific scent cues such as Gallimimus forage spots will only get a visual tile once a clean current HUD capture is verified.</div>
+
+<div class="exact-compass-direction">
+  <div class="compass-mini"><span class="north-mark">▲</span><span class="compass-line"></span><span class="south-mark">▼</span></div>
+  <div><b>Reading direction:</b> on the actual scent line, the sharp <strong>upward peak is North</strong> and the sharp <strong>downward notch is South</strong>. Evrima does not print N/E/S/W letters on the scent compass. East and West are inferred between those two reference points.</div>
+</div>
+<div class="guide-symbol-note"><b>Exact-visual policy:</b> species-specific scent cues or newly added HUD markers only receive a visual entry after a clean current in-game capture is verified.</div>
 </section>
 <div class="guide-grid" id="guideGrid">
 <details class="panel guide-card guide-chapter" id="guide-start" data-guide-tags="start beginner spawn first life first 30 minutes survival checklist" open><summary><span class="guide-card-icon">01</span><span><b>Your first life: the first 30 minutes</b><small>What to do from spawn instead of wandering until something kills you.</small></span></summary><div class="guide-chapter-body"><h4>Before moving</h4><ol><li>Open <b>Tab</b> and look at your species, growth, hunger, thirst, nutrients and any active status effects.</li><li>Tap/hold <b>Q</b> to orient with the compass and scent information.</li><li>Open the Primeval Refuge <b>Map</b> on a second screen or browser tab and press <b>Center on me</b>. Learn the name of your starting area.</li><li>Pick one immediate objective: water if thirsty, food if hungry, or cover if both are comfortable.</li></ol><h4>Your first travel rule</h4><p>Do not sprint everywhere. Travel with enough stamina left to escape. Move through cover, pause before crossing open terrain, and approach water from vegetation instead of walking directly down an exposed bank.</p><h4>First-life priority order</h4><div class="guide-priority"><span>1. Stay alive</span><span>2. Water</span><span>3. Food</span><span>4. Nutrients</span><span>5. Growth</span><span>6. Social / combat</span></div><h4>What new players usually do wrong</h4><ul><li>Following every roar because it sounds interesting.</li><li>Draining stamina before reaching water or a risky crossing.</li><li>Standing still on a riverbank while drinking.</li><li>Chasing a perfect diet through dangerous territory while already starving.</li><li>Testing combat on adults while still juvenile.</li></ul></div></details>

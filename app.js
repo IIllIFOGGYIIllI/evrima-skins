@@ -703,7 +703,7 @@ async function refreshLiveLocation(silent=true){
 }
 
 
-/* Primeval Refuge Gateway Live Map + Guide v0.13.1 */
+/* Primeval Refuge Gateway Live Map + Guide v0.13.2 */
 const GATEWAY_MAP_PRIMARY="https://myislemap.com/assets/gateway-map.webp?v=20260809v1";
 const GATEWAY_MAP_FALLBACK="https://raw.githubusercontent.com/klong-dev/IsleLiveMap/main/src/TheIsleOverlay.App/Assets/GatewayMap.webp";
 const GATEWAY_MAP_WIDTH=7800,GATEWAY_MAP_HEIGHT=7817;
@@ -842,10 +842,10 @@ function initGatewayMap(){
 }
 
 
-/* Primeval Refuge Guide v0.13.1 */
+/* Primeval Refuge Guide v0.13.2 */
 function guideSpeciesRole(player){const name=String(player?.species||"").toLowerCase();const species=SPECIES.find(s=>s.slug===name)||SPECIES.find(s=>s.name.toLowerCase()===name);return species?.category||"Survivor";}
 function renderGuideLiveContext(){const p=gatewayCurrentPlayer(),fit=activeGatewayFit(),q=p&&fit?applyGatewayTransform(fit,p.location?.x,p.location?.y):null,onMap=q&&q.u>=0&&q.u<=1&&q.v>=0&&q.v<=1,ctx=onMap?currentGatewayContext(q):{area:"—",zones:[]},role=guideSpeciesRole(p),growth=Number(p?.growth);if($("guideLiveSpecies"))$("guideLiveSpecies").textContent=p?.species||"—";if($("guideLiveGrowth"))$("guideLiveGrowth").textContent=Number.isFinite(growth)?growth+"%":"—";if($("guideLiveRole"))$("guideLiveRole").textContent=p?role:"—";if($("guideLiveArea"))$("guideLiveArea").textContent=ctx.area||"—";if($("guideLiveSummary"))$("guideLiveSummary").textContent=p?`${p.name||"Survivor"} · ${p.species||"Dinosaur"} · ${Number.isFinite(growth)?growth+"% growth":"live"}`:"Spawn into Primeval Refuge for live guidance";const title=$("guideNowTitle"),list=$("guideNowList");if(!title||!list)return;let advice=[];if(!p){title.textContent="Quick-start priorities";advice=["Keep food, water and stamina healthy before taking risks.","Use scent and the compass to navigate instead of sprinting blindly.","Open the Map tab while moving so area names start becoming familiar."];}else{const young=Number.isFinite(growth)&&growth<35,mid=Number.isFinite(growth)&&growth>=35&&growth<75;title.textContent=young?`Growing ${p.species}: survive first`:`Playing ${p.species}: current priorities`;if(young)advice.push("Prioritise safe food, water and growth; avoid unnecessary adult encounters and exposed travel.");else if(mid)advice.push("You have more capability now, but keep an escape route and enough stamina to disengage.");else advice.push("Maintain diet, water and stamina before committing to fights, nesting or long travel.");const r=role.toLowerCase();if(r.includes("herbivore"))advice.push("Use migration cues and reference zones to find better plant/diet opportunities; young herbivores should learn sanctuary cues.");else if(r.includes("aquatic"))advice.push("Use waterways as your main movement network and learn crossings, bends and shore access before taking long overland risks.");else if(r.includes("flyer"))advice.push("Protect flight stamina and choose safe landing/drinking spots before you are forced down.");else if(r.includes("omnivore"))advice.push("Use your flexible diet deliberately: fill nutrient gaps instead of eating only the easiest food.");else advice.push("Scent, carcass signs and patrol activity can help find food, but they can also lead you directly into stronger predators.");if(ctx.area&&ctx.area!=="—")advice.push(`You are currently around ${ctx.area}; use the Map tab to connect what you see in-game with the terrain name.`);if(ctx.zones?.length)advice.push(`Your marker overlaps reference zone geometry for ${[...new Set(ctx.zones.map(z=>z.name))].join(", ")}. Treat it as a navigation clue, not confirmed live activation.`);}list.innerHTML=advice.map(x=>`<li>${escapeHtml(x)}</li>`).join("");}
-function filterGuideCards(){const q=String($("guideSearch")?.value||"").trim().toLowerCase(),cards=[...document.querySelectorAll(".guide-card")],symbols=[...document.querySelectorAll(".guide-symbol-item, .exact-scent-key>div, .exact-zone-grid figure")];let shown=0;cards.forEach(card=>{const hay=((card.dataset.guideTags||"")+" "+card.textContent).toLowerCase(),ok=!q||hay.includes(q);card.hidden=!ok;if(ok){shown++;if(q&&card.tagName==="DETAILS")card.open=true;}});symbols.forEach(item=>{const hay=((item.dataset.guideTags||"")+" "+item.textContent).toLowerCase(),ok=!q||hay.includes(q);item.hidden=!ok;});const grid=$("guideGrid");if(grid)grid.classList.toggle("no-results",shown===0);}
+function filterGuideCards(){const q=String($("guideSearch")?.value||"").trim().toLowerCase(),cards=[...document.querySelectorAll(".guide-card")],symbols=[...document.querySelectorAll(".scent-card, .exact-zone-card")];let shown=0,symbolShown=0;cards.forEach(card=>{const hay=((card.dataset.guideTags||"")+" "+card.textContent).toLowerCase(),ok=!q||hay.includes(q);card.hidden=!ok;if(ok){shown++;if(q&&card.tagName==="DETAILS")card.open=true;}});symbols.forEach(item=>{const hay=((item.dataset.guideTags||"")+" "+item.textContent).toLowerCase(),ok=!q||hay.includes(q);item.hidden=!ok;if(ok)symbolShown++;});const grid=$("guideGrid");if(grid)grid.classList.toggle("no-results",shown===0);const status=$("guideSearchStatus");if(status)status.textContent=q?`${symbolShown} symbol/zone reference${symbolShown===1?"":"s"} and ${shown} guide chapter${shown===1?"":"s"} match “${$("guideSearch").value.trim()}”.`:"";}
 
 let statusRefreshBusy=false;
 async function refreshServerStatus(){
@@ -967,11 +967,41 @@ if($("mapCopyCalibration"))$("mapCopyCalibration").onclick=copyGatewayCalibratio
 if($("mapLayerNames"))$("mapLayerNames").onchange=e=>{gatewayLayerState.names=e.target.checked;saveGatewayLayerState();renderGatewayReferenceLayers();};
 if($("mapLayerMigration"))$("mapLayerMigration").onchange=e=>{gatewayLayerState.migration=e.target.checked;saveGatewayLayerState();renderGatewayReferenceLayers();updateGatewayMapLiveData();};
 if($("mapLayerPatrol"))$("mapLayerPatrol").onchange=e=>{gatewayLayerState.patrol=e.target.checked;saveGatewayLayerState();renderGatewayReferenceLayers();updateGatewayMapLiveData();};
+
+function setGuideSymbolMode(mode){
+  const panel=$("guide-symbols");
+  if(!panel)return;
+  const detailed=mode==="learn";
+  panel.classList.toggle("guide-mode-learn",detailed);
+  panel.classList.toggle("guide-mode-quick",!detailed);
+  const quick=$("guideQuickMode"),learn=$("guideLearnMode");
+  if(quick){quick.classList.toggle("active",!detailed);quick.setAttribute("aria-pressed",String(!detailed));}
+  if(learn){learn.classList.toggle("active",detailed);learn.setAttribute("aria-pressed",String(detailed));}
+  try{localStorage.setItem("primevalGuideSymbolMode",detailed?"learn":"quick");}catch{}
+}
+function initGuideChapterNavigation(){
+  const chapters=[...document.querySelectorAll(".guide-chapter")];
+  chapters.forEach((chapter,index)=>{
+    const body=chapter.querySelector(".guide-chapter-body");
+    if(!body||body.querySelector(".guide-chapter-nav"))return;
+    const nav=document.createElement("div");nav.className="guide-chapter-nav";
+    const prev=index>0?chapters[index-1]:null,next=index<chapters.length-1?chapters[index+1]:null;
+    if(prev){const b=document.createElement("button");b.type="button";b.textContent="← Previous";b.onclick=()=>{prev.open=true;prev.scrollIntoView({behavior:"smooth",block:"start"});};nav.appendChild(b);}
+    const top=document.createElement("a");top.href="#guide-symbols";top.textContent="Guide contents";nav.appendChild(top);
+    if(next){const b=document.createElement("button");b.type="button";b.textContent="Next →";b.onclick=()=>{next.open=true;next.scrollIntoView({behavior:"smooth",block:"start"});};nav.appendChild(b);}
+    body.appendChild(nav);
+  });
+}
+
 if($("guideSearch"))$("guideSearch").addEventListener("input",filterGuideCards);
 if($("guideClearSearch"))$("guideClearSearch").onclick=()=>{$("guideSearch").value="";filterGuideCards();$("guideSearch").focus();};
 if($("guideOpenMap"))$("guideOpenMap").onclick=()=>setAppPage("map",true);
 if($("guideExpandAll"))$("guideExpandAll").onclick=()=>document.querySelectorAll(".guide-chapter").forEach(ch=>{if(!ch.hidden)ch.open=true;});
 if($("guideCollapseAll"))$("guideCollapseAll").onclick=()=>document.querySelectorAll(".guide-chapter").forEach(ch=>ch.open=false);
+if($("guideQuickMode"))$("guideQuickMode").onclick=()=>setGuideSymbolMode("quick");
+if($("guideLearnMode"))$("guideLearnMode").onclick=()=>setGuideSymbolMode("learn");
+try{setGuideSymbolMode(localStorage.getItem("primevalGuideSymbolMode")==="learn"?"learn":"quick");}catch{setGuideSymbolMode("quick");}
+initGuideChapterNavigation();
 
 $("communitySearch").addEventListener("input",renderCommunity);$("communitySpecies").onchange=renderCommunity;$("communitySort").onchange=renderCommunity;$("refreshCommunity").onclick=()=>refreshCommunity(false);
 $("communityFavoritesOnly").onclick=()=>{$("communityFavoritesOnly").classList.toggle("active");$("communityFavoritesOnly").textContent=$("communityFavoritesOnly").classList.contains("active")?"★ My favourites":"☆ My favourites";renderCommunity();};
