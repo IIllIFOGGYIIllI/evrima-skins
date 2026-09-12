@@ -23,6 +23,9 @@ const pendingDiscordLinks=new Map();
 const DISCORD_LINK_TTL_MS=10*60*1000;
 const rate=new Map(),steamApplyRate=new Map(),libraryRate=new Map(),steamLibraryRate=new Map(),communityRate=new Map(),steamCommunityRate=new Map();
 let lastHeartbeat=0;
+let livePlayers=[];
+let lastLiveUpdate=0;
+let liveTracking={enabled:false,ok:false,error:null,source:"rcon",polledAt:0};
 
 function send(res,status,obj,headers={}){
   if(res.destroyed)return;
@@ -73,6 +76,26 @@ function normalizeLibrarySkin(raw){
   const colors={};for(const f of FIELDS){const h=cleanHex(raw.colors&&raw.colors[f]);if(!h)return{error:`Invalid ${f} colour`};colors[f]=h}
   return{skin:{id,name,species,patternIndex:Math.max(0,Math.min(count-1,Math.floor(Number(raw.patternIndex)||0))),skinVariation:Math.max(0,Math.min(2,Math.floor(Number(raw.skinVariation)||0))),themeIndex:0,previewSex:raw.previewSex==="female"?"female":"male",colors,favorite:Boolean(raw.favorite),tags:cleanTags(raw.tags),visibility:cleanVisibility(raw.visibility)}};
 }
+function cleanLivePlayer(raw){
+  raw=raw&&typeof raw==="object"?raw:{};
+  const playerId=String(raw.playerId||raw.steam||raw.id||"").trim();if(!/^[A-Za-z0-9:_-]{6,80}$/.test(playerId))return null;
+  const steam=/^\d{17}$/.test(playerId)?playerId:null;
+  const name=String(raw.name||"").replace(/[\r\n\t]/g," ").replace(/\s+/g," ").trim().slice(0,64);
+  const species=String(raw.species||raw.class||"").replace(/^BP_/i,"").replace(/_C$/i,"").replace(/[^A-Za-z0-9_-]/g,"").slice(0,48);
+  const n=v=>{v=Number(v);return Number.isFinite(v)?v:null};
+  const pct=v=>{v=n(v);return v===null?null:Math.max(0,Math.min(100,Math.round(v)))};
+  const x=n(raw.x??raw.location?.x),y=n(raw.y??raw.location?.y),z=n(raw.z??raw.location?.z);
+  if(x===null||y===null||z===null)return null;
+  return{playerId,steam,name,species,location:{x,y,z},growth:pct(raw.growth),health:pct(raw.health),stamina:pct(raw.stamina),hunger:pct(raw.hunger),thirst:pct(raw.thirst)};
+}
+function replaceLivePlayers(raw,tracking){
+  const out=[],seen=new Set();
+  for(const item of Array.isArray(raw)?raw:[]){const p=cleanLivePlayer(item);if(!p||seen.has(p.playerId))continue;seen.add(p.playerId);out.push(p);if(out.length>=200)break}
+  livePlayers=out;lastLiveUpdate=Date.now();
+  const t=tracking&&typeof tracking==="object"?tracking:{};
+  liveTracking={enabled:Boolean(t.enabled),ok:Boolean(t.ok),error:t.error?String(t.error).slice(0,240):null,source:"rcon",polledAt:Math.max(0,Number(t.polledAt)||lastLiveUpdate)};
+}
+function liveFresh(){return lastLiveUpdate>0&&Date.now()-lastLiveUpdate<15000}
 const APPLY_PENDING_MAX_MS=120000;
 const APPLY_TERMINAL=new Set(["applied","failed","superseded"]);
 function prune(){
@@ -278,7 +301,7 @@ const app=http.createServer(async(req,res)=>{
   cors(req,res);if(req.method==="OPTIONS"){res.writeHead(204);return res.end()}
   const url=new URL(req.url,PUBLIC_BASE_URL||`http://${req.headers.host||"localhost"}`);
   try{
-    if(req.method==="GET"&&url.pathname==="/health")return send(res,200,{ok:true,service:"FOGGY Evrima Skin API",version:"0.10.0",accountLinkStoragePersistent:Boolean(process.env.ACCOUNT_LINKS_FILE)});
+    if(req.method==="GET"&&url.pathname==="/health")return send(res,200,{ok:true,service:"FOGGY Evrima Skin API",version:"0.10.1",accountLinkStoragePersistent:Boolean(process.env.ACCOUNT_LINKS_FILE)});
     if(req.method==="GET"&&url.pathname==="/auth/steam"){if(!PUBLIC_BASE_URL||!SESSION_SECRET)return send(res,503,{error:"Steam auth is not configured"});const linkToken=String(url.searchParams.get("link")||"");if(linkToken&&!pendingDiscordLink(linkToken))return send(res,410,{error:"Discord link request expired. Run /link again in Discord."});res.writeHead(302,{Location:openidUrl(linkToken),"Cache-Control":"no-store"});return res.end()}
     if(req.method==="GET"&&url.pathname==="/auth/steam/callback"){const linkToken=String(url.searchParams.get("link")||""),steam=await verifySteam(url);if(!steam){res.writeHead(302,{Location:FRONTEND_URL+(linkToken?"#discord=failed":"#auth=failed"),"Cache-Control":"no-store"});return res.end()}const session=signSession(steam);if(linkToken){const pending=pendingDiscordLink(linkToken);if(!pending){res.writeHead(302,{Location:FRONTEND_URL+"#session="+encodeURIComponent(session)+"&discord=expired","Cache-Control":"no-store"});return res.end()}pendingDiscordLinks.delete(linkToken);try{await accountLinks.link({discordId:pending.discordId,steam,username:pending.username,displayName:pending.displayName});res.writeHead(302,{Location:FRONTEND_URL+"#session="+encodeURIComponent(session)+"&discord=linked","Cache-Control":"no-store"});return res.end()}catch(e){if(e?.code==="DISCORD_ALREADY_LINKED"||e?.code==="STEAM_ALREADY_LINKED"){res.writeHead(302,{Location:FRONTEND_URL+"#session="+encodeURIComponent(session)+"&discord=conflict","Cache-Control":"no-store"});return res.end()}throw e}}res.writeHead(302,{Location:FRONTEND_URL+"#session="+encodeURIComponent(session),"Cache-Control":"no-store"});return res.end()}
     if(req.method==="GET"&&url.pathname==="/api/me"){const u=user(req);if(!u)return send(res,401,{error:"Steam sign-in required"});const link=accountLinks.getBySteam(u.steam);return send(res,200,{steam:u.steam,discord:link?{id:link.discordId,username:link.username,displayName:link.displayName,linkedAt:link.linkedAt}:null})}
@@ -298,7 +321,8 @@ const app=http.createServer(async(req,res)=>{
     if(req.method==="GET"&&discordSkinStatusMatch){if(!botAuth(req))return send(res,401,{error:"Invalid Primeval bot token"});const identity=linkedDiscordIdentity(url.searchParams.get("discordId"),url.searchParams.get("guildId"));if(!identity.ok)return sendIdentityError(res,identity);const c=commands.get(discordSkinStatusMatch[1]);if(!c||c.steam!==identity.link.steam)return send(res,404,{error:"Skin Apply request not found",code:"APPLY_NOT_FOUND"});return send(res,200,skinStatusPayload(c))}
     const discordRecentMatch=url.pathname.match(/^\/api\/discord\/skins\/recent\/(\d{15,22})$/);
     if(req.method==="GET"&&discordRecentMatch){if(!botAuth(req))return send(res,401,{error:"Invalid Primeval bot token"});const identity=linkedDiscordIdentity(discordRecentMatch[1],url.searchParams.get("guildId"));if(!identity.ok)return sendIdentityError(res,identity);prune();const requests=[];for(let i=order.length-1;i>=0&&requests.length<8;i--){const c=commands.get(order[i]);if(c&&c.steam===identity.link.steam)requests.push(skinStatusPayload(c))}return send(res,200,{requests})}
-    if(req.method==="GET"&&url.pathname==="/api/public/status")return send(res,200,{server:SERVER_ID,online:bridgeIsOnline(),lastHeartbeat:lastHeartbeat||null});
+    if(req.method==="GET"&&url.pathname==="/api/public/status")return send(res,200,{server:SERVER_ID,online:bridgeIsOnline(),lastHeartbeat:lastHeartbeat||null,liveTracking:{enabled:liveTracking.enabled,ok:liveTracking.ok,fresh:liveFresh(),lastUpdate:lastLiveUpdate||null}});
+    if(req.method==="GET"&&url.pathname==="/api/live/me"){const u=user(req);if(!u)return send(res,401,{error:"Steam sign-in required"});const p=livePlayers.find(x=>x.steam===u.steam)||null;return send(res,200,{server:SERVER_ID,bridgeOnline:bridgeIsOnline(),tracking:{...liveTracking,fresh:liveFresh(),lastUpdate:lastLiveUpdate||null,playerCount:livePlayers.length},online:Boolean(p),player:p});}
     if(req.method==="GET"&&url.pathname==="/api/assets")return await proxyAsset(url,res);
     if(req.method==="GET"&&url.pathname==="/api/assets/status"){
       const info=assetSource(url.searchParams.get("url"));
@@ -414,7 +438,7 @@ const app=http.createServer(async(req,res)=>{
       return send(res,200,{ok:true,status:c.status})
     }
     if(req.method==="POST"&&url.pathname==="/api/server/heartbeat"){
-      if(!serverAuth(req))return send(res,401,{error:"Invalid server bridge token"});const b=await readBody(req,512*1024);if(!requireServerBody(b))return send(res,409,{error:"Server ID mismatch"});lastHeartbeat=Date.now();if(Array.isArray(b.communityItems))replaceCommunityCache(b.communityItems,b.communityRevision);return send(res,200,{ok:true,server:SERVER_ID,communityRevision})
+      if(!serverAuth(req))return send(res,401,{error:"Invalid server bridge token"});const b=await readBody(req,512*1024);if(!requireServerBody(b))return send(res,409,{error:"Server ID mismatch"});lastHeartbeat=Date.now();if(Array.isArray(b.communityItems))replaceCommunityCache(b.communityItems,b.communityRevision);if(Array.isArray(b.livePlayers)||b.liveTracking)replaceLivePlayers(b.livePlayers||[],b.liveTracking||{});return send(res,200,{ok:true,server:SERVER_ID,communityRevision,livePlayers:livePlayers.length,lastLiveUpdate})
     }
     return send(res,404,{error:"Not found"})
   }catch(e){console.error("[FOGGY API]",e);return send(res,500,{error:"Internal server error"})}

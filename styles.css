@@ -256,3 +256,11 @@ footer{text-align:center;color:#6f756c;font-size:9px;margin-top:15px}
   background:rgba(8,11,8,.78);border:1px solid rgba(174,151,76,.55);
   color:#d9c577;font-size:8px;text-decoration:none
 }
+
+/* Primeval Refuge live-location proof of concept */
+.live-location-card{margin-top:14px;padding:14px;border:1px solid var(--line,#2b332a);border-radius:14px;background:rgba(7,10,7,.72)}
+.live-location-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.live-location-head strong{display:block;margin-top:3px}
+.live-location-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0}.live-location-grid div{padding:9px 10px;border:1px solid rgba(255,255,255,.08);border-radius:9px;background:rgba(255,255,255,.025)}
+.live-location-grid span{display:block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;opacity:.65}.live-location-grid b{display:block;margin-top:3px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:13px}
+.live-location-note{font-size:12px;line-height:1.45;opacity:.75;margin-bottom:10px}.live-location-card>button{width:100%}
+@media(max-width:640px){.live-location-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}

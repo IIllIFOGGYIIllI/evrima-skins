@@ -6,7 +6,7 @@
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
 <meta content="#0b0e0a" name="theme-color"/>
 <title>Primeval Refuge | Evrima Skin Studio</title>
-<link href="./styles.css" rel="stylesheet"/>
+<link href="./styles.css?v=0104" rel="stylesheet"/>
 <script type="importmap">
 {
   "imports": {
@@ -132,7 +132,7 @@
 <div class="statuses brand-statuses">
 <span class="status warn" id="apiStatus">API checking…</span>
 <span class="status warn" id="serverStatus">Bridge checking…</span>
-<span class="status">Web v0.10.3</span>
+<span class="status">Web v0.10.4</span>
 </div>
 </div>
 </header><nav aria-label="Skin Studio sections" class="app-tabs">
@@ -249,6 +249,14 @@
 <span id="accountDetail">Sign in once. No client files or commands are required.</span>
 </div>
 <button id="steamButton">Sign in with Steam</button>
+</div>
+<div class="live-location-card" id="liveLocationCard">
+<div class="live-location-head"><div><div class="kicker">LIVE LOCATION POC</div><strong id="liveLocationTitle">Waiting for Steam sign-in</strong></div><span class="status warn" id="liveLocationStatus">Not connected</span></div>
+<div class="live-location-grid">
+<div><span>Species</span><b id="liveSpecies">—</b></div><div><span>Growth</span><b id="liveGrowth">—</b></div><div><span>X</span><b id="liveX">—</b></div><div><span>Y</span><b id="liveY">—</b></div><div><span>Z</span><b id="liveZ">—</b></div><div><span>Updated</span><b id="liveUpdated">—</b></div>
+</div>
+<div class="live-location-note" id="liveLocationNote">This diagnostic only returns the signed-in Steam account's own dinosaur.</div>
+<button id="refreshLiveLocation" type="button">Refresh live location</button>
 </div>
 </section>
 <section class="editor-panel panel">
@@ -432,6 +440,6 @@
 <div class="toast" id="toast"></div>
 <script src="./config.js"></script>
 <script src="./viewer3d.js?v=083" type="module"></script>
-<script src="./app.js?v=111"></script>
+<script src="./app.js?v=112"></script>
 </body>
 </html>

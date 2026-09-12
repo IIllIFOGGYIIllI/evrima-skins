@@ -1,4 +1,5 @@
 const { spawn } = require("child_process");
+const crypto = require("crypto");
 const path = require("path");
 const os = require("os");
 const fsp = require("fs/promises");
@@ -45,6 +46,8 @@ const env = {
 };
 
 const auth = token => ({ Authorization: `Bearer ${token}`, "Content-Type": "application/json" });
+const b64 = x => Buffer.from(x).toString("base64url");
+const userSession = steam => { const payload=b64(JSON.stringify({steam,exp:Date.now()+60000})); const sig=b64(crypto.createHmac("sha256",env.SESSION_SECRET).update(payload).digest()); return payload+"."+sig; };
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 let child;
 let finished = false;
@@ -99,7 +102,7 @@ async function main() {
   child.stderr.on("data", data => process.stderr.write(data));
 
   const health = await waitForServer();
-  if (health.version !== "0.10.0") throw Error("health version failed");
+  if (health.version !== "0.10.1") throw Error("health version failed");
 
   let out = await request(`/api/discord/account/${discordId}`, { headers: auth(botToken) });
   if (!out.response.ok || out.data.account?.steam !== steamId) throw Error("Discord account lookup failed");
@@ -110,9 +113,16 @@ async function main() {
   if (out.response.status !== 503 || out.data.code !== "BRIDGE_OFFLINE") throw Error("offline library guard failed");
 
   out = await request("/api/server/heartbeat", {
-    method: "POST", headers: auth(bridgeToken), body: JSON.stringify({ server: serverId, communityItems: [], communityRevision: 1 })
+    method: "POST", headers: auth(bridgeToken), body: JSON.stringify({ server: serverId, communityItems: [], communityRevision: 1, liveTracking: { enabled: true, ok: true, polledAt: Date.now() }, livePlayers: [{ playerId: steamId, name: "Test Survivor", species: "Tyrannosaurus", x: 123.5, y: -456.25, z: 78, growth: 75, health: 91, stamina: 88, hunger: 64, thirst: 52 }, { playerId: "EOS_ABCDEF1234567890", name: "EOS Test", species: "Omniraptor", x: 1, y: 2, z: 3, growth: 50 }] })
   });
   if (!out.response.ok) throw Error("heartbeat failed");
+
+  out = await request("/api/live/me", { headers: auth(userSession(steamId)) });
+  if (!out.response.ok || !out.data.online || out.data.player?.location?.x !== 123.5 || out.data.player?.species !== "Tyrannosaurus" || out.data.tracking?.playerCount !== 2) throw Error("personal live location failed");
+  out = await request("/api/live/me");
+  if (out.response.status !== 401) throw Error("personal live location auth guard failed");
+  out = await request("/api/public/status");
+  if (!out.data.liveTracking?.enabled || !out.data.liveTracking?.fresh) throw Error("public live tracking health failed");
 
   out = await request("/api/discord/library/op", {
     method: "POST", headers: auth(botToken), body: JSON.stringify({ discordId, guildId, action: "list" })
@@ -169,7 +179,7 @@ async function main() {
   out = await request(`/api/discord/skins/recent/223456789012345678?guildId=${guildId}`, { headers: auth(botToken) });
   if (out.response.status !== 409 || out.data.code !== "ACCOUNT_NOT_LINKED") throw Error("unlinked Discord guard failed");
 
-  await cleanup(0, "FOGGY API v0.10.0 Discord Skin Studio integration tests passed");
+  await cleanup(0, "Primeval Refuge API v0.10.1 live-location + Skin Studio tests passed");
 }
 
 main().catch(async error => {

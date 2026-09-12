@@ -671,10 +671,32 @@ async function refreshMe(){
   if(!API_READY){$("apiStatus").textContent="API not configured";$("apiStatus").className="status warn";setCloudStatus("Cloud library unavailable","bad");return;}
   try{await api("/health");$("apiStatus").textContent="Skin API online";$("apiStatus").className="status good";}
   catch{$("apiStatus").textContent="Skin API unreachable";$("apiStatus").className="status bad";}
-  if(!session){me=null;cloudLibrary={skins:[],lastApplied:null};activeCloudId="";publishedMine=[];renderCloudLibrary();renderPublishedMine();setCloudStatus("Sign in with Steam to sync saved skins","");setPublishStatus("Sign in with Steam to publish","");$("accountTitle").textContent="Steam not linked";$("accountDetail").textContent="Sign in once. No client files or commands required.";$("steamButton").textContent="Sign in with Steam";return;}
-  try{me=await api("/api/me");$("accountTitle").textContent=me.discord?"Steam + Discord linked":"Steam linked";const discordLabel=me.discord?(me.discord.displayName||me.discord.username||me.discord.id):"Not linked";$("accountDetail").textContent="SteamID64 "+me.steam+" • Discord: "+discordLabel;$("steamButton").textContent="Sign out";loadCachedCloudLibrary();refreshCloudLibrary(true);refreshApplyHistory(true);refreshPublishedMine(true);}
+  if(!session){me=null;cloudLibrary={skins:[],lastApplied:null};activeCloudId="";publishedMine=[];renderCloudLibrary();renderPublishedMine();setCloudStatus("Sign in with Steam to sync saved skins","");setPublishStatus("Sign in with Steam to publish","");$("accountTitle").textContent="Steam not linked";$("accountDetail").textContent="Sign in once. No client files or commands required.";$("steamButton").textContent="Sign in with Steam";renderLiveLocation();return;}
+  try{me=await api("/api/me");$("accountTitle").textContent=me.discord?"Steam + Discord linked":"Steam linked";const discordLabel=me.discord?(me.discord.displayName||me.discord.username||me.discord.id):"Not linked";$("accountDetail").textContent="SteamID64 "+me.steam+" • Discord: "+discordLabel;$("steamButton").textContent="Sign out";loadCachedCloudLibrary();refreshCloudLibrary(true);refreshApplyHistory(true);refreshPublishedMine(true);refreshLiveLocation(true);}
   catch{session="";localStorage.removeItem("foggy_skin_session");me=null;refreshMe();}
 }
+let liveLocationBusy=false;
+function renderLiveLocation(d=null){
+  const status=$("liveLocationStatus"),title=$("liveLocationTitle"),note=$("liveLocationNote");
+  if(!status||!title)return;
+  if(!me){status.textContent="Not connected";status.className="status warn";title.textContent="Waiting for Steam sign-in";note.textContent="Sign in with Steam to verify your current dinosaur position.";for(const id of ["liveSpecies","liveGrowth","liveX","liveY","liveZ","liveUpdated"])$(id).textContent="—";return;}
+  if(!d){status.textContent="Checking…";status.className="status warn";title.textContent="Reading Primeval Refuge live data";return;}
+  const t=d.tracking||{},p=d.player;
+  if(!t.enabled){status.textContent="RCON disabled";status.className="status warn";title.textContent="Live tracking is not enabled on the server bridge";note.textContent="Enable RCON in the bridge config to begin the location proof of concept.";return;}
+  if(!t.ok||!t.fresh){status.textContent="Tracking unavailable";status.className="status bad";title.textContent="RCON has not supplied fresh player data";note.textContent=t.error||"The bridge is online, but live player data is stale or unavailable.";return;}
+  if(!d.online||!p){status.textContent="No live dinosaur";status.className="status warn";if(Number(t.playerCount)>0){title.textContent="RCON player data is live, but your Steam session did not match a returned PlayerID";note.textContent="Evrima can return either Steam or EOS PlayerIDs. This POC will report the ID format without exposing another player's location.";}else{title.textContent="Steam account is not currently in a spawned dinosaur";note.textContent="GetPlayerData excludes players still on the species-selection screen.";}return;}
+  status.textContent="LIVE";status.className="status good";title.textContent=p.name?`${p.name} — live dinosaur found`:"Live dinosaur found";note.textContent="Raw Gateway world coordinates from Evrima RCON. Map calibration comes next.";
+  $("liveSpecies").textContent=p.species||"Unknown";$("liveGrowth").textContent=Number.isFinite(p.growth)?p.growth+"%":"—";
+  $("liveX").textContent=Number(p.location?.x).toFixed(1);$("liveY").textContent=Number(p.location?.y).toFixed(1);$("liveZ").textContent=Number(p.location?.z).toFixed(1);
+  $("liveUpdated").textContent=t.lastUpdate?new Date(t.lastUpdate).toLocaleTimeString():"Now";
+}
+async function refreshLiveLocation(silent=true){
+  if(liveLocationBusy)return;if(!me||!API_READY){renderLiveLocation();return;}liveLocationBusy=true;renderLiveLocation(null);
+  try{const d=await api("/api/live/me");renderLiveLocation(d);if(!silent&&d.online)toast("Live location refreshed");}
+  catch(e){renderLiveLocation({tracking:{enabled:true,ok:false,fresh:false,error:e.message}});if(!silent)toast(e.message);}
+  finally{liveLocationBusy=false;}
+}
+
 let statusRefreshBusy=false;
 async function refreshServerStatus(){
   if(!API_READY||statusRefreshBusy)return;
@@ -756,6 +778,7 @@ async function applySkin(){
 
 buildSpecies();buildColors();buildPresets();buildCloudFilters();buildCommunitySpecies();refreshSaved();renderCloudLibrary();renderPublishedMine();renderApplyHistory();readAuthHash();renderAll();setAppPage(currentPageFromUrl(),false);refreshMe();refreshServerStatus();loadSharedPublicationFromUrl();refreshCommunity(true);
 setInterval(refreshServerStatus,10000);
+setInterval(()=>{if(me&&document.visibilityState==="visible")refreshLiveLocation(true);},5000);
 
 $("species").onchange=e=>{pushHistory();selected=SPECIES.find(s=>s.slug===e.target.value)||SPECIES[0];patternIndex=0;renderAll();};
 $("randomSpecies").onclick=()=>{pushHistory();selected=SPECIES[Math.floor(Math.random()*SPECIES.length)];patternIndex=0;renderAll();};
@@ -802,6 +825,7 @@ $("redo").onclick=()=>{if(!future.length)return;history.push(snapshot());restore
 $("apply").onclick=applySkin;
 $("refreshApplyHistory").onclick=()=>refreshApplyHistory(false);
 $("steamButton").onclick=()=>{if(me){session="";me=null;localStorage.removeItem("foggy_skin_session");refreshMe();}else if(API_READY)location.href=API+"/auth/steam";else toast("Railway backend is not connected");};
+$("refreshLiveLocation").onclick=()=>refreshLiveLocation(false);
 
 function emitSettings(){
   $("brightnessValue").textContent=$("backdropBrightness").value+"%";
