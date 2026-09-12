@@ -6,7 +6,7 @@
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
 <meta content="#0b0e0a" name="theme-color"/>
 <title>Primeval Refuge | Evrima Skin Studio</title>
-<link href="./styles.css?v=0104" rel="stylesheet"/>
+<link href="./styles.css?v=0110" rel="stylesheet"/>
 <script type="importmap">
 {
   "imports": {
@@ -97,7 +97,7 @@
 @media(max-width:700px){
   html{scroll-padding-top:72px}body{padding:7px;padding-bottom:calc(82px + env(safe-area-inset-bottom))}.shell{width:100%;overflow:visible}
   .topbar{gap:9px;margin-bottom:8px}.topbar h1{font-size:clamp(28px,11vw,42px)}.topbar p{font-size:11px;line-height:1.35}.statuses{gap:5px}.status{padding:6px 8px;font-size:8px}
-  .app-tabs{position:fixed;left:0;right:0;bottom:0;top:auto;z-index:100;margin:0;padding:7px max(7px,env(safe-area-inset-right)) calc(7px + env(safe-area-inset-bottom)) max(7px,env(safe-area-inset-left));display:grid;grid-template-columns:repeat(4,1fr);gap:5px;background:rgba(8,11,8,.97);border-top:1px solid #4d4935;box-shadow:0 -8px 28px rgba(0,0,0,.45);overflow:visible}
+  .app-tabs{position:fixed;left:0;right:0;bottom:0;top:auto;z-index:100;margin:0;padding:7px max(7px,env(safe-area-inset-right)) calc(7px + env(safe-area-inset-bottom)) max(7px,env(safe-area-inset-left));display:grid;grid-template-columns:repeat(5,1fr);gap:5px;background:rgba(8,11,8,.97);border-top:1px solid #4d4935;box-shadow:0 -8px 28px rgba(0,0,0,.45);overflow:visible}
   .app-tabs button{min-width:0;min-height:46px;padding:7px 4px;font-size:9px;white-space:normal}.app-tabs-spacer,.app-tab-note{display:none}
   .page-heading{padding:12px}.page-heading h2{font-size:22px}.page-heading p{font-size:10px}
   .panel,.publish-card,.community-toolbar,.community-card{border-left-width:1px;border-right-width:1px}.preview-panel,.editor-panel{padding:11px}
@@ -132,16 +132,17 @@
 <div class="statuses brand-statuses">
 <span class="status warn" id="apiStatus">API checking…</span>
 <span class="status warn" id="serverStatus">Bridge checking…</span>
-<span class="status">Web v0.10.4</span>
+<span class="status">Web v0.11.0</span>
 </div>
 </div>
 </header><nav aria-label="Skin Studio sections" class="app-tabs">
 <button class="active" data-page="studio" type="button">Studio</button>
 <button data-page="library" type="button">My Library</button>
 <button data-page="community" type="button">Community</button>
+<button data-page="map" type="button">Map</button>
 <button data-page="publishing" type="button">Publish</button>
 <span class="app-tabs-spacer"></span>
-<span class="app-tab-note">Browse · save · favourite · apply</span>
+<span class="app-tab-note">Browse · save · map · apply</span>
 </nav>
 <section class="app-page active" data-app-page="studio" id="page-studio"><main class="creator">
 <section class="preview-panel panel">
@@ -251,11 +252,11 @@
 <button id="steamButton">Sign in with Steam</button>
 </div>
 <div class="live-location-card" id="liveLocationCard">
-<div class="live-location-head"><div><div class="kicker">LIVE LOCATION POC</div><strong id="liveLocationTitle">Waiting for Steam sign-in</strong></div><span class="status warn" id="liveLocationStatus">Not connected</span></div>
+<div class="live-location-head"><div><div class="kicker">LIVE LOCATION</div><strong id="liveLocationTitle">Waiting for Steam sign-in</strong></div><span class="status warn" id="liveLocationStatus">Not connected</span></div>
 <div class="live-location-grid">
 <div><span>Species</span><b id="liveSpecies">—</b></div><div><span>Growth</span><b id="liveGrowth">—</b></div><div><span>X</span><b id="liveX">—</b></div><div><span>Y</span><b id="liveY">—</b></div><div><span>Z</span><b id="liveZ">—</b></div><div><span>Updated</span><b id="liveUpdated">—</b></div>
 </div>
-<div class="live-location-note" id="liveLocationNote">This diagnostic only returns the signed-in Steam account's own dinosaur.</div>
+<div class="live-location-note" id="liveLocationNote">Only your signed-in Steam account's own dinosaur is returned.</div>
 <button id="refreshLiveLocation" type="button">Refresh live location</button>
 </div>
 </section>
@@ -404,6 +405,45 @@
 </section>
 <div class="community-grid" id="communityGrid"></div>
 </main>
+</section>
+<section class="app-page" data-app-page="map" id="page-map">
+<main class="page-shell map-page-shell">
+<div class="page-heading map-page-heading"><div><div class="kicker">GATEWAY LIVE MAP</div><h2>Primeval Refuge Map</h2><p>Your live dinosaur position comes directly from Evrima RCON and uses an established Gateway projection immediately. Calibration mode lets you verify or fine-tune that alignment against exact locations in-game.</p></div><div class="map-heading-status"><span class="status warn" id="mapTrackingStatus">Waiting for live data</span><span class="status" id="mapCalibrationBadge">0 anchors</span></div></div>
+<div class="gateway-map-layout">
+<section class="panel gateway-map-panel">
+<div class="gateway-map-toolbar">
+<div class="gateway-map-toolbar-left"><button id="mapZoomOut" type="button">−</button><button id="mapZoomReset" type="button">Reset view</button><button id="mapZoomIn" type="button">+</button><span id="mapZoomLabel">100%</span></div>
+<div class="gateway-map-toolbar-right"><button id="mapCenterMe" type="button">Center on me</button><button class="primary" id="mapCalibrationToggle" type="button">Start calibration</button></div>
+</div>
+<div class="gateway-map-viewport" id="gatewayMapViewport" aria-label="Interactive Gateway map">
+<div class="gateway-map-stage" id="gatewayMapStage">
+<img id="gatewayMapImage" alt="Gateway map" draggable="false"/>
+<div class="gateway-map-grid" aria-hidden="true"></div>
+<div class="gateway-map-markers" id="gatewayMapMarkers"></div>
+</div>
+<div class="map-cursor-readout" id="mapCursorReadout">Move over the map for map coordinates</div>
+<div class="map-loading" id="mapLoading">Loading Gateway map…</div>
+</div>
+<div class="gateway-map-credit">Gateway map texture source: <a href="https://myislemap.com/" target="_blank" rel="noopener">MyIsleMap</a> · projection reference: <a href="https://github.com/klong-dev/IsleLiveMap" target="_blank" rel="noopener">IsleLiveMap</a> · calibration data stays in this browser during this calibration build.</div>
+</section>
+<aside class="gateway-map-side">
+<section class="panel map-live-panel">
+<div class="section-head compact"><div><div class="kicker">MY LIVE DINOSAUR</div><span class="section-sub" id="mapLiveState">Waiting for Steam sign-in</span></div><button id="mapRefreshLive" type="button">Refresh</button></div>
+<div class="map-live-grid"><div><span>Species</span><b id="mapLiveSpecies">—</b></div><div><span>Growth</span><b id="mapLiveGrowth">—</b></div><div><span>X</span><b id="mapLiveX">—</b></div><div><span>Y</span><b id="mapLiveY">—</b></div><div><span>Z</span><b id="mapLiveZ">—</b></div><div><span>Map</span><b id="mapLiveMap">—</b></div></div>
+<div class="map-live-note" id="mapLiveNote">The live marker uses the established Gateway reference projection immediately; calibration anchors can verify or tune alignment.</div>
+</section>
+<section class="panel map-calibration-panel">
+<div class="section-head compact"><div><div class="kicker">ADMIN CALIBRATION MODE</div><span class="section-sub" id="mapCalibrationStatus">Stand at a recognisable location, then start calibration.</span></div></div>
+<label class="field-stack"><span>Anchor label</span><input id="mapCalibrationName" maxlength="40" placeholder="e.g. South Plains bridge"/></label>
+<div class="map-calibration-instructions" id="mapCalibrationInstructions">The map already has an established Gateway projection. When calibration is active, each click saves your current live RCON X/Y/Z against that exact map point so you can verify or tune it. Use at least 3 widely separated locations for a custom fit; 4–5 is better.</div>
+<div class="map-calibration-actions"><button id="mapDeleteLast" type="button">Delete last</button><button id="mapCopyCalibration" type="button">Copy calibration</button><button id="mapClearCalibration" type="button">Clear all</button></div>
+<div class="map-calibration-fit" id="mapCalibrationFit">No transform yet.</div>
+<div class="map-calibration-list" id="mapCalibrationList"></div>
+</section>
+</aside>
+</div>
+</main>
+</section>
 <section class="app-page" data-app-page="publishing" id="page-publishing">
 <main class="page-shell">
 <div class="page-heading"><div><div class="kicker">COMMUNITY PUBLISHING</div><h2>Publish skins</h2><p>Publish an explicit snapshot of one of your Steam-library skins. Editing the private original never changes the published copy until you press Update snapshot.</p></div></div>
@@ -434,12 +474,12 @@
 </main>
 </section>
 <footer>
-  Primeval Refuge · Evrima PvE Community · researched Evrima-source 3D previews · unverified species use the reference image rather than a fake proxy
+  Primeval Refuge · Evrima PvE Community · live Gateway tracking · researched Evrima-source 3D previews
 </footer>
 </div>
 <div class="toast" id="toast"></div>
 <script src="./config.js"></script>
 <script src="./viewer3d.js?v=083" type="module"></script>
-<script src="./app.js?v=112"></script>
+<script src="./app.js?v=113"></script>
 </body>
 </html>

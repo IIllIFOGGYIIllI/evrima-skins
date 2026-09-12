@@ -37,6 +37,7 @@ let communityPublic=[],communityFavorites=new Set(),communityBusy=false,communit
 const APPLY_HISTORY_KEY="foggy_apply_history_v1";
 let activeApplyId="",activeApplyData=null,applyPollToken=0,applyBusy=false;
 const $=id=>document.getElementById(id);
+function escapeHtml(value){return String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[ch]);}
 
 function toast(m){
   const t=$("toast");t.textContent=m;t.classList.add("show");
@@ -448,7 +449,7 @@ async function saveCloudMetadata(){
 
 
 
-const APP_PAGES=new Set(["studio","library","community","publishing"]);
+const APP_PAGES=new Set(["studio","library","community","map","publishing"]);
 function currentPageFromUrl(){const q=new URLSearchParams(location.search),p=q.get("view");return APP_PAGES.has(p)?p:(q.get("published")?"community":"studio");}
 function setAppPage(page,writeUrl=true){
   if(!APP_PAGES.has(page))page="studio";
@@ -458,6 +459,7 @@ function setAppPage(page,writeUrl=true){
   if(page==="studio")setTimeout(()=>window.dispatchEvent(new Event("resize")),20);
   if(page==="publishing"&&me)refreshPublishedMine(true);
   if(page==="community")refreshCommunity(true);
+  if(page==="map"){setTimeout(()=>{syncGatewayMapSize();renderGatewayMap();},25);if(me)refreshLiveLocation(true);}
 }
 function cleanPublishDescription(v){return String(v||"").replace(/[\r\t]/g," ").replace(/\n{3,}/g,"\n\n").trim().slice(0,240);}
 function selectedPublishSource(){return (cloudLibrary.skins||[]).find(s=>s.id===$("publishSource")?.value)||null;}
@@ -675,26 +677,121 @@ async function refreshMe(){
   try{me=await api("/api/me");$("accountTitle").textContent=me.discord?"Steam + Discord linked":"Steam linked";const discordLabel=me.discord?(me.discord.displayName||me.discord.username||me.discord.id):"Not linked";$("accountDetail").textContent="SteamID64 "+me.steam+" • Discord: "+discordLabel;$("steamButton").textContent="Sign out";loadCachedCloudLibrary();refreshCloudLibrary(true);refreshApplyHistory(true);refreshPublishedMine(true);refreshLiveLocation(true);}
   catch{session="";localStorage.removeItem("foggy_skin_session");me=null;refreshMe();}
 }
-let liveLocationBusy=false;
+let liveLocationBusy=false,lastLiveLocationData=null;
 function renderLiveLocation(d=null){
   const status=$("liveLocationStatus"),title=$("liveLocationTitle"),note=$("liveLocationNote");
+  if(d&&d.player)lastLiveLocationData=d;else if(d&&(!d.online||!d.player))lastLiveLocationData=d;
   if(!status||!title)return;
-  if(!me){status.textContent="Not connected";status.className="status warn";title.textContent="Waiting for Steam sign-in";note.textContent="Sign in with Steam to verify your current dinosaur position.";for(const id of ["liveSpecies","liveGrowth","liveX","liveY","liveZ","liveUpdated"])$(id).textContent="—";return;}
-  if(!d){status.textContent="Checking…";status.className="status warn";title.textContent="Reading Primeval Refuge live data";return;}
+  if(!me){lastLiveLocationData=null;status.textContent="Not connected";status.className="status warn";title.textContent="Waiting for Steam sign-in";note.textContent="Sign in with Steam to verify your current dinosaur position.";for(const id of ["liveSpecies","liveGrowth","liveX","liveY","liveZ","liveUpdated"])$(id).textContent="—";updateGatewayMapLiveData();return;}
+  if(!d){status.textContent="Checking…";status.className="status warn";title.textContent="Reading Primeval Refuge live data";updateGatewayMapLiveData(true);return;}
   const t=d.tracking||{},p=d.player;
-  if(!t.enabled){status.textContent="RCON disabled";status.className="status warn";title.textContent="Live tracking is not enabled on the server bridge";note.textContent="Enable RCON in the bridge config to begin the location proof of concept.";return;}
-  if(!t.ok||!t.fresh){status.textContent="Tracking unavailable";status.className="status bad";title.textContent="RCON has not supplied fresh player data";note.textContent=t.error||"The bridge is online, but live player data is stale or unavailable.";return;}
-  if(!d.online||!p){status.textContent="No live dinosaur";status.className="status warn";if(Number(t.playerCount)>0){title.textContent="RCON player data is live, but your Steam session did not match a returned PlayerID";note.textContent="Evrima can return either Steam or EOS PlayerIDs. This POC will report the ID format without exposing another player's location.";}else{title.textContent="Steam account is not currently in a spawned dinosaur";note.textContent="GetPlayerData excludes players still on the species-selection screen.";}return;}
-  status.textContent="LIVE";status.className="status good";title.textContent=p.name?`${p.name} — live dinosaur found`:"Live dinosaur found";note.textContent="Raw Gateway world coordinates from Evrima RCON. Map calibration comes next.";
+  if(!t.enabled){status.textContent="RCON disabled";status.className="status warn";title.textContent="Live tracking is not enabled on the server bridge";note.textContent="Enable RCON in the bridge config to begin live tracking.";updateGatewayMapLiveData();return;}
+  if(!t.ok||!t.fresh){status.textContent="Tracking unavailable";status.className="status bad";title.textContent="RCON has not supplied fresh player data";note.textContent=t.error||"The bridge is online, but live player data is stale or unavailable.";updateGatewayMapLiveData();return;}
+  if(!d.online||!p){status.textContent="No live dinosaur";status.className="status warn";if(Number(t.playerCount)>0){title.textContent="RCON player data is live, but your Steam session did not match a returned PlayerID";note.textContent="Evrima can return either Steam or EOS PlayerIDs. This POC will report the ID format without exposing another player's location.";}else{title.textContent="Steam account is not currently in a spawned dinosaur";note.textContent="GetPlayerData excludes players still on the species-selection screen.";}updateGatewayMapLiveData();return;}
+  status.textContent="LIVE";status.className="status good";title.textContent=p.name?`${p.name} — live dinosaur found`:"Live dinosaur found";note.textContent="Raw Gateway world coordinates from Evrima RCON. Open the Map tab for live tracking and calibration.";
   $("liveSpecies").textContent=p.species||"Unknown";$("liveGrowth").textContent=Number.isFinite(p.growth)?p.growth+"%":"—";
   $("liveX").textContent=Number(p.location?.x).toFixed(1);$("liveY").textContent=Number(p.location?.y).toFixed(1);$("liveZ").textContent=Number(p.location?.z).toFixed(1);
   $("liveUpdated").textContent=t.lastUpdate?new Date(t.lastUpdate).toLocaleTimeString():"Now";
+  updateGatewayMapLiveData();
 }
 async function refreshLiveLocation(silent=true){
   if(liveLocationBusy)return;if(!me||!API_READY){renderLiveLocation();return;}liveLocationBusy=true;renderLiveLocation(null);
   try{const d=await api("/api/live/me");renderLiveLocation(d);if(!silent&&d.online)toast("Live location refreshed");}
   catch(e){renderLiveLocation({tracking:{enabled:true,ok:false,fresh:false,error:e.message}});if(!silent)toast(e.message);}
   finally{liveLocationBusy=false;}
+}
+
+
+/* Primeval Refuge Gateway Live Map v0.11.0 */
+const GATEWAY_MAP_PRIMARY="https://myislemap.com/assets/gateway-map.webp?v=20260809v1";
+const GATEWAY_MAP_FALLBACK="https://raw.githubusercontent.com/klong-dev/IsleLiveMap/main/src/TheIsleOverlay.App/Assets/GatewayMap.webp";
+const GATEWAY_MAP_WIDTH=7800,GATEWAY_MAP_HEIGHT=7817;
+// Reference projection used by IsleLiveMap with this exact bundled Gateway texture.
+// World X/Y are horizontal Unreal coordinates; Z is altitude.
+const GATEWAY_REFERENCE_FIT={originX:0,originY:0,worldScale:100000,u:[100/1112,0,505/1112],v:[0,100/1116,607/1116],rmsPx:null,maxPx:null,source:"reference"};
+const GATEWAY_CALIBRATION_KEY="primeval_refuge_gateway_calibration_v1";
+let gatewayMapZoom=1,gatewayMapPanX=0,gatewayMapPanY=0,gatewayMapDrag=null,gatewayMapCalibrationMode=false,gatewayMapImageFallbackUsed=false;
+let gatewayCalibrationAnchors=loadGatewayCalibrationAnchors(),gatewayCalibrationFit=null;
+function clamp(n,a,b){return Math.max(a,Math.min(b,n));}
+function loadGatewayCalibrationAnchors(){
+  try{const raw=JSON.parse(localStorage.getItem(GATEWAY_CALIBRATION_KEY)||"[]");if(!Array.isArray(raw))return[];return raw.filter(x=>Number.isFinite(Number(x.worldX))&&Number.isFinite(Number(x.worldY))&&Number.isFinite(Number(x.mapU))&&Number.isFinite(Number(x.mapV))).slice(0,12).map((x,i)=>({id:String(x.id||`${Date.now()}-${i}`),label:String(x.label||`Point ${i+1}`).slice(0,40),worldX:Number(x.worldX),worldY:Number(x.worldY),worldZ:Number(x.worldZ)||0,mapU:clamp(Number(x.mapU),0,1),mapV:clamp(Number(x.mapV),0,1),createdAt:Number(x.createdAt)||Date.now()}));}catch{return[];}
+}
+function saveGatewayCalibrationAnchors(){localStorage.setItem(GATEWAY_CALIBRATION_KEY,JSON.stringify(gatewayCalibrationAnchors));}
+function solve3x3(m,b){
+  const a=m.map((r,i)=>[...r,b[i]]);
+  for(let c=0;c<3;c++){let p=c;for(let r=c+1;r<3;r++)if(Math.abs(a[r][c])>Math.abs(a[p][c]))p=r;if(Math.abs(a[p][c])<1e-10)return null;[a[c],a[p]]=[a[p],a[c]];const q=a[c][c];for(let j=c;j<4;j++)a[c][j]/=q;for(let r=0;r<3;r++){if(r===c)continue;const f=a[r][c];for(let j=c;j<4;j++)a[r][j]-=f*a[c][j];}}
+  return[a[0][3],a[1][3],a[2][3]];
+}
+function calculateGatewayCalibration(){
+  const pts=gatewayCalibrationAnchors;if(pts.length<3)return null;
+  const originX=pts.reduce((s,p)=>s+p.worldX,0)/pts.length,originY=pts.reduce((s,p)=>s+p.worldY,0)/pts.length,worldScale=100000;
+  const rows=pts.map(p=>[(p.worldX-originX)/worldScale,(p.worldY-originY)/worldScale,1]);
+  const m=[[0,0,0],[0,0,0],[0,0,0]],bu=[0,0,0],bv=[0,0,0];
+  rows.forEach((r,i)=>{for(let x=0;x<3;x++){bu[x]+=r[x]*pts[i].mapU;bv[x]+=r[x]*pts[i].mapV;for(let y=0;y<3;y++)m[x][y]+=r[x]*r[y];}});
+  const cu=solve3x3(m,bu),cv=solve3x3(m,bv);if(!cu||!cv)return null;
+  const fit={originX,originY,worldScale,u:cu,v:cv,rmsPx:0,maxPx:0};let total=0,max=0;
+  pts.forEach(p=>{const q=applyGatewayTransform(fit,p.worldX,p.worldY),dx=(q.u-p.mapU)*GATEWAY_MAP_WIDTH,dy=(q.v-p.mapV)*GATEWAY_MAP_HEIGHT,e=Math.hypot(dx,dy);total+=e*e;max=Math.max(max,e);});fit.rmsPx=Math.sqrt(total/pts.length);fit.maxPx=max;return fit;
+}
+function applyGatewayTransform(fit,x,y){if(!fit)return null;const sx=(Number(x)-fit.originX)/fit.worldScale,sy=(Number(y)-fit.originY)/fit.worldScale;return{u:fit.u[0]*sx+fit.u[1]*sy+fit.u[2],v:fit.v[0]*sx+fit.v[1]*sy+fit.v[2]};}
+function mapPointFromClient(clientX,clientY){const stage=$("gatewayMapStage");if(!stage)return null;const r=stage.getBoundingClientRect();if(!r.width||!r.height)return null;const u=(clientX-r.left)/r.width,v=(clientY-r.top)/r.height;if(u<0||u>1||v<0||v>1)return null;return{u,v};}
+function setGatewayMapTransform(){
+  const vp=$("gatewayMapViewport"),stage=$("gatewayMapStage");if(!vp||!stage)return;const w=vp.clientWidth,h=vp.clientHeight,pad=28;
+  gatewayMapPanX=clamp(gatewayMapPanX,w*(1-gatewayMapZoom)-pad,pad);gatewayMapPanY=clamp(gatewayMapPanY,h*(1-gatewayMapZoom)-pad,pad);
+  stage.style.transform=`translate(${gatewayMapPanX}px,${gatewayMapPanY}px) scale(${gatewayMapZoom})`;stage.style.setProperty("--marker-scale",String(1/gatewayMapZoom));if($("mapZoomLabel"))$("mapZoomLabel").textContent=Math.round(gatewayMapZoom*100)+"%";
+}
+function zoomGatewayMap(next,clientX=null,clientY=null){
+  const vp=$("gatewayMapViewport");if(!vp)return;const old=gatewayMapZoom,n=clamp(next,1,5);if(Math.abs(n-old)<.001)return;const r=vp.getBoundingClientRect(),px=clientX==null?r.width/2:clientX-r.left,py=clientY==null?r.height/2:clientY-r.top;gatewayMapPanX=px-((px-gatewayMapPanX)/old)*n;gatewayMapPanY=py-((py-gatewayMapPanY)/old)*n;gatewayMapZoom=n;setGatewayMapTransform();}
+function resetGatewayMapView(){gatewayMapZoom=1;gatewayMapPanX=0;gatewayMapPanY=0;setGatewayMapTransform();}
+function syncGatewayMapSize(){setGatewayMapTransform();}
+function activeGatewayFit(){return gatewayCalibrationFit||GATEWAY_REFERENCE_FIT;}
+function gatewayCurrentPlayer(){return lastLiveLocationData?.online&&lastLiveLocationData?.player?lastLiveLocationData.player:null;}
+function gatewayTracking(){return lastLiveLocationData?.tracking||null;}
+function formatWorld(n){return Number.isFinite(Number(n))?Number(n).toFixed(1):"—";}
+function renderGatewayCalibrationList(){
+  const host=$("mapCalibrationList");if(!host)return;host.innerHTML="";gatewayCalibrationAnchors.forEach((p,i)=>{const row=document.createElement("div");row.className="map-calibration-item";row.innerHTML=`<div class="map-calibration-index">${i+1}</div><div class="map-calibration-main"><strong>${escapeHtml(p.label||`Point ${i+1}`)}</strong><span>X ${p.worldX.toFixed(1)} · Y ${p.worldY.toFixed(1)} · map ${(p.mapU*100).toFixed(2)}%, ${(p.mapV*100).toFixed(2)}%</span></div><button type="button" data-cal-delete="${escapeHtml(p.id)}">×</button>`;host.append(row);});host.querySelectorAll("[data-cal-delete]").forEach(b=>b.onclick=()=>{gatewayCalibrationAnchors=gatewayCalibrationAnchors.filter(p=>p.id!==b.dataset.calDelete);saveGatewayCalibrationAnchors();renderGatewayMap();});
+  if(!gatewayCalibrationAnchors.length){const e=document.createElement("div");e.className="community-empty";e.textContent="No calibration anchors saved in this browser yet.";host.append(e);}
+}
+function renderGatewayMapMarkers(){
+  const host=$("gatewayMapMarkers");if(!host)return;host.innerHTML="";gatewayCalibrationAnchors.forEach((p,i)=>{const m=document.createElement("div");m.className="gateway-marker gateway-anchor-marker";m.style.left=(p.mapU*100)+"%";m.style.top=(p.mapV*100)+"%";m.textContent=String(i+1);m.dataset.label=p.label||`Point ${i+1}`;host.append(m);});
+  const player=gatewayCurrentPlayer(),fit=activeGatewayFit();if(player&&fit){const q=applyGatewayTransform(fit,player.location?.x,player.location?.y),m=document.createElement("div");m.className="gateway-marker gateway-live-marker";m.dataset.live="1";m.dataset.label=`YOU · ${player.species||"Dinosaur"}`;if(q&&q.u>=0&&q.u<=1&&q.v>=0&&q.v<=1){m.style.left=(q.u*100)+"%";m.style.top=(q.v*100)+"%";}else m.classList.add("off-map");host.append(m);}
+}
+function renderGatewayMap(){
+  gatewayCalibrationFit=calculateGatewayCalibration();const n=gatewayCalibrationAnchors.length,fit=gatewayCalibrationFit,badge=$("mapCalibrationBadge"),status=$("mapCalibrationStatus"),fitEl=$("mapCalibrationFit"),vp=$("gatewayMapViewport");
+  if(badge){badge.textContent=fit?`${n} anchor${n===1?"":"s"} · tuned`:n?`${n}/3 anchors`:`Reference projection`;badge.className="status "+(fit?"good":n?"warn":"good");}
+  if(vp)vp.classList.toggle("calibrating",gatewayMapCalibrationMode);
+  if($("mapCalibrationToggle"))$("mapCalibrationToggle").textContent=gatewayMapCalibrationMode?"Finish calibration":"Start calibration";
+  if(status){if(gatewayMapCalibrationMode)status.textContent=gatewayCurrentPlayer()?"Calibration active — click the exact point where you are standing":"Calibration active — waiting for a live spawned dinosaur";else status.textContent=fit?"Custom calibration solved — add more anchors to improve accuracy":"Reference projection active — calibration is optional verification/tuning.";}
+  if(fitEl){if(!fit){fitEl.className="map-calibration-fit "+(n?"warn":"good");fitEl.textContent=n?`Reference projection still active · ${n}/3 anchors captured · add widely separated points to calculate a custom fit.`:"Reference projection active · X: (X/1000 + 505) / 1112 · Y: (Y/1000 + 607) / 1116. Add anchors only to verify or tune it.";}else{fitEl.className="map-calibration-fit "+(fit.rmsPx<80?"good":"warn");fitEl.textContent=`Custom affine transform from ${n} anchors · RMS error ${fit.rmsPx.toFixed(1)} px · max ${fit.maxPx.toFixed(1)} px${fit.rmsPx>80?" · add wider-spread anchors":""}`;}}
+  renderGatewayCalibrationList();renderGatewayMapMarkers();updateGatewayMapLiveData();setGatewayMapTransform();
+}
+function updateGatewayMapLiveData(checking=false){
+  const p=gatewayCurrentPlayer(),t=gatewayTracking(),trackStatus=$("mapTrackingStatus"),state=$("mapLiveState"),note=$("mapLiveNote");if(!trackStatus||!state)return;
+  if(checking){trackStatus.textContent="Refreshing…";trackStatus.className="status warn";state.textContent="Reading live RCON data…";return;}
+  if(!me){trackStatus.textContent="Steam sign-in required";trackStatus.className="status warn";state.textContent="Sign in with Steam";}
+  else if(!t?.enabled){trackStatus.textContent="RCON disabled";trackStatus.className="status bad";state.textContent="Live tracking unavailable";}
+  else if(!t?.ok||!t?.fresh){trackStatus.textContent="Tracking unavailable";trackStatus.className="status bad";state.textContent=t?.error||"Waiting for fresh RCON data";}
+  else if(!p){trackStatus.textContent="No live dinosaur";trackStatus.className="status warn";state.textContent="Spawn into Primeval Refuge to appear here";}
+  else{trackStatus.textContent="LIVE";trackStatus.className="status good";state.textContent=`${p.name||"Survivor"} · ${p.species||"Unknown species"}`;}
+  for(const [id,val] of [["mapLiveSpecies",p?.species||"—"],["mapLiveGrowth",Number.isFinite(p?.growth)?p.growth+"%":"—"],["mapLiveX",p?formatWorld(p.location?.x):"—"],["mapLiveY",p?formatWorld(p.location?.y):"—"],["mapLiveZ",p?formatWorld(p.location?.z):"—"]])if($(id))$(id).textContent=val;
+  const mapFit=activeGatewayFit(),q=p&&mapFit?applyGatewayTransform(mapFit,p.location?.x,p.location?.y):null,onMap=q&&q.u>=0&&q.u<=1&&q.v>=0&&q.v<=1;if($("mapLiveMap"))$("mapLiveMap").textContent=onMap?`${(q.u*100).toFixed(2)}%, ${(q.v*100).toFixed(2)}%`:q?"Outside calibrated map":"—";
+  if(note){if(!p)note.textContent="Your position remains private; this page only receives the signed-in Steam account's dinosaur.";else if(!gatewayCalibrationFit)note.textContent="Live marker is using the established Gateway reference projection. Calibration anchors are optional and can verify or tune alignment.";else if(!onMap)note.textContent="The solved transform placed this coordinate outside the map. Add or correct calibration anchors.";else note.textContent=`Live marker active · RCON updated ${t?.lastUpdate?new Date(t.lastUpdate).toLocaleTimeString():"now"}.`;}
+  renderGatewayMapMarkers();
+}
+function addGatewayCalibrationAnchor(point){
+  const p=gatewayCurrentPlayer();if(!p){toast("Spawn as a dinosaur before adding a calibration point");return;}const label=String($("mapCalibrationName")?.value||"").trim().slice(0,40)||`Point ${gatewayCalibrationAnchors.length+1}`;
+  gatewayCalibrationAnchors.push({id:crypto.randomUUID?crypto.randomUUID():`${Date.now()}-${Math.random()}`,label,worldX:Number(p.location?.x),worldY:Number(p.location?.y),worldZ:Number(p.location?.z)||0,mapU:point.u,mapV:point.v,createdAt:Date.now()});gatewayCalibrationAnchors=gatewayCalibrationAnchors.slice(-12);saveGatewayCalibrationAnchors();if($("mapCalibrationName"))$("mapCalibrationName").value="";renderGatewayMap();toast(`Calibration point ${gatewayCalibrationAnchors.length} saved`);
+}
+function centerGatewayMapOnMe(){const p=gatewayCurrentPlayer();if(!p)return toast("No live dinosaur position available");const fit=activeGatewayFit();const q=applyGatewayTransform(fit,p.location?.x,p.location?.y);if(!q||q.u<0||q.u>1||q.v<0||q.v>1)return toast("Current coordinate is outside the calibrated map");const vp=$("gatewayMapViewport");if(!vp)return;gatewayMapZoom=Math.max(gatewayMapZoom,1.8);gatewayMapPanX=vp.clientWidth/2-q.u*vp.clientWidth*gatewayMapZoom;gatewayMapPanY=vp.clientHeight/2-q.v*vp.clientHeight*gatewayMapZoom;setGatewayMapTransform();}
+async function copyGatewayCalibration(){
+  if(gatewayCalibrationAnchors.length<3)return toast("Add at least 3 calibration anchors first");const payload={version:1,map:"Gateway",image:{width:GATEWAY_MAP_WIDTH,height:GATEWAY_MAP_HEIGHT,source:GATEWAY_MAP_PRIMARY},anchors:gatewayCalibrationAnchors,fit:gatewayCalibrationFit};const text=JSON.stringify(payload,null,2);try{await navigator.clipboard.writeText(text);toast("Calibration JSON copied");}catch{prompt("Copy calibration JSON",text);}
+}
+function initGatewayMap(){
+  const img=$("gatewayMapImage"),loading=$("mapLoading"),vp=$("gatewayMapViewport");if(!img||!vp)return;img.onload=()=>loading?.classList.add("hidden");img.onerror=()=>{if(!gatewayMapImageFallbackUsed){gatewayMapImageFallbackUsed=true;img.src=GATEWAY_MAP_FALLBACK;}else if(loading){loading.textContent="Gateway map image could not be loaded. Check internet access.";}};img.src=GATEWAY_MAP_PRIMARY;
+  vp.addEventListener("wheel",e=>{e.preventDefault();zoomGatewayMap(gatewayMapZoom*(e.deltaY<0?1.18:.85),e.clientX,e.clientY);},{passive:false});
+  vp.addEventListener("pointerdown",e=>{if(e.button!==0)return;vp.setPointerCapture?.(e.pointerId);gatewayMapDrag={id:e.pointerId,startX:e.clientX,startY:e.clientY,panX:gatewayMapPanX,panY:gatewayMapPanY,moved:false};vp.classList.add("dragging");});
+  vp.addEventListener("pointermove",e=>{const q=mapPointFromClient(e.clientX,e.clientY);if(q&&$("mapCursorReadout"))$("mapCursorReadout").textContent=`Map ${(q.u*100).toFixed(2)}%, ${(q.v*100).toFixed(2)}% · pixel ${Math.round(q.u*GATEWAY_MAP_WIDTH)}, ${Math.round(q.v*GATEWAY_MAP_HEIGHT)}`;if(!gatewayMapDrag||gatewayMapDrag.id!==e.pointerId)return;const dx=e.clientX-gatewayMapDrag.startX,dy=e.clientY-gatewayMapDrag.startY;if(Math.hypot(dx,dy)>4)gatewayMapDrag.moved=true;gatewayMapPanX=gatewayMapDrag.panX+dx;gatewayMapPanY=gatewayMapDrag.panY+dy;setGatewayMapTransform();});
+  const finish=e=>{if(!gatewayMapDrag||gatewayMapDrag.id!==e.pointerId)return;const drag=gatewayMapDrag;gatewayMapDrag=null;vp.classList.remove("dragging");if(!drag.moved&&gatewayMapCalibrationMode){const q=mapPointFromClient(e.clientX,e.clientY);if(q)addGatewayCalibrationAnchor(q);}};vp.addEventListener("pointerup",finish);vp.addEventListener("pointercancel",finish);
+  window.addEventListener("resize",syncGatewayMapSize);renderGatewayMap();
 }
 
 let statusRefreshBusy=false;
@@ -776,7 +873,7 @@ async function applySkin(){
 }
 
 
-buildSpecies();buildColors();buildPresets();buildCloudFilters();buildCommunitySpecies();refreshSaved();renderCloudLibrary();renderPublishedMine();renderApplyHistory();readAuthHash();renderAll();setAppPage(currentPageFromUrl(),false);refreshMe();refreshServerStatus();loadSharedPublicationFromUrl();refreshCommunity(true);
+buildSpecies();buildColors();buildPresets();buildCloudFilters();buildCommunitySpecies();refreshSaved();renderCloudLibrary();renderPublishedMine();renderApplyHistory();readAuthHash();renderAll();initGatewayMap();setAppPage(currentPageFromUrl(),false);refreshMe();refreshServerStatus();loadSharedPublicationFromUrl();refreshCommunity(true);
 setInterval(refreshServerStatus,10000);
 setInterval(()=>{if(me&&document.visibilityState==="visible")refreshLiveLocation(true);},5000);
 
@@ -804,6 +901,15 @@ $("exportCloudAll").onclick=exportCloudLibrary;
 $("importCloud").onclick=()=>$("cloudImportFile").click();
 $("cloudImportFile").onchange=async e=>{const f=e.target.files?.[0];e.target.value="";if(f)await importCloudFile(f);};
 document.querySelectorAll(".app-tabs [data-page]").forEach(b=>b.onclick=()=>setAppPage(b.dataset.page,true));
+if($("mapZoomIn"))$("mapZoomIn").onclick=()=>zoomGatewayMap(gatewayMapZoom*1.25);
+if($("mapZoomOut"))$("mapZoomOut").onclick=()=>zoomGatewayMap(gatewayMapZoom*.8);
+if($("mapZoomReset"))$("mapZoomReset").onclick=resetGatewayMapView;
+if($("mapCenterMe"))$("mapCenterMe").onclick=centerGatewayMapOnMe;
+if($("mapRefreshLive"))$("mapRefreshLive").onclick=()=>refreshLiveLocation(false);
+if($("mapCalibrationToggle"))$("mapCalibrationToggle").onclick=()=>{gatewayMapCalibrationMode=!gatewayMapCalibrationMode;renderGatewayMap();if(gatewayMapCalibrationMode)toast("Calibration active — click your exact location on Gateway");};
+if($("mapDeleteLast"))$("mapDeleteLast").onclick=()=>{if(!gatewayCalibrationAnchors.length)return toast("No calibration anchors to delete");gatewayCalibrationAnchors.pop();saveGatewayCalibrationAnchors();renderGatewayMap();};
+if($("mapClearCalibration"))$("mapClearCalibration").onclick=()=>{if(!gatewayCalibrationAnchors.length)return;if(!confirm("Clear all Gateway calibration anchors saved in this browser?"))return;gatewayCalibrationAnchors=[];saveGatewayCalibrationAnchors();renderGatewayMap();toast("Calibration cleared");};
+if($("mapCopyCalibration"))$("mapCopyCalibration").onclick=copyGatewayCalibration;
 $("communitySearch").addEventListener("input",renderCommunity);$("communitySpecies").onchange=renderCommunity;$("communitySort").onchange=renderCommunity;$("refreshCommunity").onclick=()=>refreshCommunity(false);
 $("communityFavoritesOnly").onclick=()=>{$("communityFavoritesOnly").classList.toggle("active");$("communityFavoritesOnly").textContent=$("communityFavoritesOnly").classList.contains("active")?"★ My favourites":"☆ My favourites";renderCommunity();};
 $("communityClear").onclick=()=>{$("communitySearch").value="";$("communitySpecies").value="";$("communitySort").value="new";$("communityFavoritesOnly").classList.remove("active");$("communityFavoritesOnly").textContent="☆ My favourites";communityTagFilter="";renderCommunity();};
