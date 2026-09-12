@@ -40,15 +40,29 @@ const $=id=>document.getElementById(id);
 function escapeHtml(value){return String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[ch]);}
 
 const GUIDE_IMAGE_OVERRIDES={
-  allosaurus:"https://www.theisle.info/allosaurus.png",
+  allosaurus:"https://pbs.twimg.com/media/C5hGlyTU4AMP9Wl.jpg",
   triceratops:"https://www.theisle.info/triceratops.png",
   diabloceratops:"https://www.theisle.info/diablo.png",
-  kentrosaurus:"https://www.theisle.info/kentrosaurus.png",
-  maiasaura:"https://www.theisle.info/maiasaura.png"
+  kentrosaurus:"https://pbs.twimg.com/media/ElSQwGoWoAEP8pj.jpg",
+  maiasaura:"https://images.steamusercontent.com/ugc/36693745239406485/C8D2445339D2BA679F7E939AE7AB8D4ADD25DC99/"
 };
 function guideSpeciesImage(sp){return GUIDE_IMAGE_OVERRIDES[sp.slug]||sp.image;}
 function guideSpeciesImageFallbacks(sp){
+  const knownReliable={
+    allosaurus:[
+      "https://pbs.twimg.com/media/C5hGlyTU4AMP9Wl.jpg",
+      "https://steamuserimages-a.akamaihd.net/ugc/923682461902993417/3FC61B203AD1AEC612D0A95EE503536407CB0FE2/"
+    ],
+    kentrosaurus:[
+      "https://pbs.twimg.com/media/ElSQwGoWoAEP8pj.jpg"
+    ],
+    maiasaura:[
+      "https://images.steamusercontent.com/ugc/36693745239406485/C8D2445339D2BA679F7E939AE7AB8D4ADD25DC99/",
+      "https://www.theisledinoguide.com/_next/image?q=75&url=%2Fdinos%2Fmaiasaura.jpg&w=1080"
+    ]
+  };
   const urls=[
+    ...(knownReliable[sp.slug]||[]),
     guideSpeciesImage(sp),
     sp.image,
     `https://www.theisle.info/${sp.slug}.png`,
@@ -748,7 +762,7 @@ async function refreshLiveLocation(silent=true){
 }
 
 
-/* Primeval Refuge Gateway Live Map + Guide v0.14.1 */
+/* Primeval Refuge Gateway Live Map + Guide v0.14.2 */
 const GATEWAY_MAP_PRIMARY="https://myislemap.com/assets/gateway-map.webp?v=20260809v1";
 const GATEWAY_MAP_FALLBACK="https://raw.githubusercontent.com/klong-dev/IsleLiveMap/main/src/TheIsleOverlay.App/Assets/GatewayMap.webp";
 const GATEWAY_MAP_WIDTH=7800,GATEWAY_MAP_HEIGHT=7817;
@@ -935,7 +949,7 @@ function renderGuideSpeciesHandbook(){const detail=$("guideSpeciesDetail"),selec
 function initGuideSpeciesHandbook(){renderGuideSpeciesRoster();const select=$("guideSpeciesSelect"),liveBtn=$("guideUseLiveSpecies");if(select)select.onchange=()=>{selectedGuideSpeciesSlug=select.value;guideSpeciesManualSelection=true;renderGuideSpeciesHandbook();};if(liveBtn)liveBtn.onclick=()=>{const live=gatewayCurrentPlayer(),slug=guideSpeciesSlugFromValue(live?.species);if(!slug||!GUIDE_SPECIES[slug]){toast("No supported live dinosaur detected");return;}guideSpeciesManualSelection=false;selectedGuideSpeciesSlug=slug;renderGuideSpeciesHandbook();document.getElementById("guide-species")?.scrollIntoView({behavior:"smooth",block:"start"});};renderGuideSpeciesHandbook();}
 
 
-/* Primeval Refuge Guide v0.14.1 */
+/* Primeval Refuge Guide v0.14.2 */
 function guideSpeciesRole(player){const name=String(player?.species||"").toLowerCase();const species=SPECIES.find(s=>s.slug===name)||SPECIES.find(s=>s.name.toLowerCase()===name);return species?.category||"Survivor";}
 function renderGuideLiveContext(){renderGuideSpeciesHandbook();const p=gatewayCurrentPlayer(),fit=activeGatewayFit(),q=p&&fit?applyGatewayTransform(fit,p.location?.x,p.location?.y):null,onMap=q&&q.u>=0&&q.u<=1&&q.v>=0&&q.v<=1,ctx=onMap?currentGatewayContext(q):{area:"—",zones:[]},role=guideSpeciesRole(p),growth=Number(p?.growth);if($("guideLiveSpecies"))$("guideLiveSpecies").textContent=p?.species||"—";if($("guideLiveGrowth"))$("guideLiveGrowth").textContent=Number.isFinite(growth)?growth+"%":"—";if($("guideLiveRole"))$("guideLiveRole").textContent=p?role:"—";if($("guideLiveArea"))$("guideLiveArea").textContent=ctx.area||"—";if($("guideLiveSummary"))$("guideLiveSummary").textContent=p?`${p.name||"Survivor"} · ${p.species||"Dinosaur"} · ${Number.isFinite(growth)?growth+"% growth":"live"}`:"Spawn into Primeval Refuge for live guidance";const title=$("guideNowTitle"),list=$("guideNowList");if(!title||!list)return;let advice=[];if(!p){title.textContent="Quick-start priorities";advice=["Keep food, water and stamina healthy before taking risks.","Use scent and the compass to navigate instead of sprinting blindly.","Open the Map tab while moving so area names start becoming familiar."];}else{const young=Number.isFinite(growth)&&growth<35,mid=Number.isFinite(growth)&&growth>=35&&growth<75;title.textContent=young?`Growing ${p.species}: survive first`:`Playing ${p.species}: current priorities`;if(young)advice.push("Prioritise safe food, water and growth; avoid unnecessary adult encounters and exposed travel.");else if(mid)advice.push("You have more capability now, but keep an escape route and enough stamina to disengage.");else advice.push("Maintain diet, water and stamina before committing to fights, nesting or long travel.");const r=role.toLowerCase();if(r.includes("herbivore"))advice.push("Use migration cues and reference zones to find better plant/diet opportunities; young herbivores should learn sanctuary cues.");else if(r.includes("aquatic"))advice.push("Use waterways as your main movement network and learn crossings, bends and shore access before taking long overland risks.");else if(r.includes("flyer"))advice.push("Protect flight stamina and choose safe landing/drinking spots before you are forced down.");else if(r.includes("omnivore"))advice.push("Use your flexible diet deliberately: fill nutrient gaps instead of eating only the easiest food.");else advice.push("Scent, carcass signs and patrol activity can help find food, but they can also lead you directly into stronger predators.");if(ctx.area&&ctx.area!=="—")advice.push(`You are currently around ${ctx.area}; use the Map tab to connect what you see in-game with the terrain name.`);if(ctx.zones?.length)advice.push(`Your marker overlaps reference zone geometry for ${[...new Set(ctx.zones.map(z=>z.name))].join(", ")}. Treat it as a navigation clue, not confirmed live activation.`);}list.innerHTML=advice.map(x=>`<li>${escapeHtml(x)}</li>`).join("");}
 function filterGuideCards(){const q=String($("guideSearch")?.value||"").trim().toLowerCase(),cards=[...document.querySelectorAll(".guide-card")],symbols=[...document.querySelectorAll(".scent-card, .exact-zone-card")],species=[...document.querySelectorAll(".guide-species-roster-item")];let shown=0,symbolShown=0,speciesShown=0;cards.forEach(card=>{const hay=((card.dataset.guideTags||"")+" "+card.textContent).toLowerCase(),ok=!q||hay.includes(q);card.hidden=!ok;if(ok){shown++;if(q&&card.tagName==="DETAILS")card.open=true;}});symbols.forEach(item=>{const hay=((item.dataset.guideTags||"")+" "+item.textContent).toLowerCase(),ok=!q||hay.includes(q);item.hidden=!ok;if(ok)symbolShown++;});species.forEach(item=>{const hay=((item.dataset.guideTags||"")+" "+item.textContent).toLowerCase(),ok=!q||hay.includes(q);item.hidden=!ok;if(ok)speciesShown++;});const grid=$("guideGrid");if(grid)grid.classList.toggle("no-results",shown===0);const status=$("guideSearchStatus");if(status)status.textContent=q?`${speciesShown} species, ${symbolShown} symbol/zone reference${symbolShown===1?"":"s"} and ${shown} guide chapter${shown===1?"":"s"} match “${$("guideSearch").value.trim()}”.`:"";}
