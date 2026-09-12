@@ -39,6 +39,51 @@ let activeApplyId="",activeApplyData=null,applyPollToken=0,applyBusy=false;
 const $=id=>document.getElementById(id);
 function escapeHtml(value){return String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[ch]);}
 
+const GUIDE_IMAGE_OVERRIDES={
+  allosaurus:"https://www.theisle.info/allosaurus.png",
+  triceratops:"https://www.theisle.info/triceratops.png",
+  diabloceratops:"https://www.theisle.info/diablo.png",
+  kentrosaurus:"https://www.theisle.info/kentrosaurus.png",
+  maiasaura:"https://www.theisle.info/maiasaura.png"
+};
+function guideSpeciesImage(sp){return GUIDE_IMAGE_OVERRIDES[sp.slug]||sp.image;}
+function guideSpeciesImageFallbacks(sp){
+  const urls=[
+    guideSpeciesImage(sp),
+    sp.image,
+    `https://www.theisle.info/${sp.slug}.png`,
+    sp.slug==="diabloceratops"?"https://www.theisle.info/diablo.png":""
+  ].filter(Boolean);
+  return [...new Set(urls)];
+}
+function guideImageFallback(img){
+  if(!img)return;
+  let list=[];
+  try{list=JSON.parse(img.dataset.fallbacks||"[]");}catch{}
+  const current=String(img.currentSrc||img.src||"");
+  const next=list.find(url=>url&&url!==current&&!img.dataset.tried?.split("|").includes(url));
+  if(next){
+    const tried=(img.dataset.tried?img.dataset.tried.split("|"):[]).filter(Boolean);
+    tried.push(next);img.dataset.tried=tried.join("|");img.src=next;return;
+  }
+  img.onerror=null;
+  img.removeAttribute("src");
+  img.classList.add("guide-species-image-missing");
+  img.alt="";
+  const wrap=img.parentElement;
+  if(wrap&&!wrap.querySelector(".guide-species-image-fallback")){
+    const label=document.createElement("span");
+    label.className="guide-species-image-fallback";
+    label.textContent=img.dataset.speciesName||"Image unavailable";
+    wrap.appendChild(label);
+  }
+}
+function guideImageMarkup(sp,alt="",extraClass=""){
+  const fallbacks=guideSpeciesImageFallbacks(sp);
+  return `<img class="${escapeHtml(extraClass)}" src="${escapeHtml(fallbacks[0]||"")}" alt="${escapeHtml(alt)}" loading="lazy" data-species-name="${escapeHtml(sp.name)}" data-fallbacks='${escapeHtml(JSON.stringify(fallbacks))}' onerror="guideImageFallback(this)"/>`;
+}
+
+
 function toast(m){
   const t=$("toast");t.textContent=m;t.classList.add("show");
   clearTimeout(toast.timer);toast.timer=setTimeout(()=>t.classList.remove("show"),1700);
@@ -703,7 +748,7 @@ async function refreshLiveLocation(silent=true){
 }
 
 
-/* Primeval Refuge Gateway Live Map + Guide v0.14.0 */
+/* Primeval Refuge Gateway Live Map + Guide v0.14.1 */
 const GATEWAY_MAP_PRIMARY="https://myislemap.com/assets/gateway-map.webp?v=20260809v1";
 const GATEWAY_MAP_FALLBACK="https://raw.githubusercontent.com/klong-dev/IsleLiveMap/main/src/TheIsleOverlay.App/Assets/GatewayMap.webp";
 const GATEWAY_MAP_WIDTH=7800,GATEWAY_MAP_HEIGHT=7817;
@@ -872,10 +917,10 @@ let selectedGuideSpeciesSlug="tyrannosaurus",guideSpeciesManualSelection=false;
 function guideSpeciesSlugFromValue(value){const s=String(value||"").trim().toLowerCase();const found=SPECIES.find(x=>x.slug===s)||SPECIES.find(x=>x.name.toLowerCase()===s);return found?.slug||"";}
 function guideSpeciesMeta(slug){const species=SPECIES.find(s=>s.slug===slug);const guide=GUIDE_SPECIES[slug];return species&&guide?{...species,...guide}:null;}
 function guideGrowthStage(growth){const g=Number(growth);if(!Number.isFinite(g))return "Reference profile";if(g<35)return "Young / survival stage";if(g<75)return "Growing / subadult stage";if(g<87.5)return "Adult stage";return "Elder-stage growth";}
-function renderGuideSpeciesRoster(){const host=$("guideSpeciesRoster"),select=$("guideSpeciesSelect");if(!host||!select)return;const keep=selectedGuideSpeciesSlug;select.innerHTML="";host.innerHTML="";let lastCategory="";SPECIES.forEach(sp=>{if(!GUIDE_SPECIES[sp.slug])return;if(sp.category!==lastCategory){lastCategory=sp.category;const group=document.createElement("optgroup");group.label=sp.category;select.append(group);}const group=[...select.children].find(x=>x.tagName==="OPTGROUP"&&x.label===sp.category);group?.append(new Option(sp.name,sp.slug));const b=document.createElement("button");b.type="button";b.className="guide-species-roster-item";b.dataset.species=sp.slug;b.dataset.guideTags=`${sp.name} ${sp.slug} ${sp.category} ${GUIDE_SPECIES[sp.slug].ability} ${GUIDE_SPECIES[sp.slug].role}`;b.innerHTML=`<img src="${escapeHtml(sp.image)}" alt="" loading="lazy"/><span><b>${escapeHtml(sp.name)}</b><small>${escapeHtml(GUIDE_SPECIES[sp.slug].ability)}</small></span>`;b.onclick=()=>{selectedGuideSpeciesSlug=sp.slug;guideSpeciesManualSelection=true;renderGuideSpeciesHandbook();};host.append(b);});if([...select.options].some(o=>o.value===keep))select.value=keep;}
+function renderGuideSpeciesRoster(){const host=$("guideSpeciesRoster"),select=$("guideSpeciesSelect");if(!host||!select)return;const keep=selectedGuideSpeciesSlug;select.innerHTML="";host.innerHTML="";let lastCategory="";SPECIES.forEach(sp=>{if(!GUIDE_SPECIES[sp.slug])return;if(sp.category!==lastCategory){lastCategory=sp.category;const group=document.createElement("optgroup");group.label=sp.category;select.append(group);}const group=[...select.children].find(x=>x.tagName==="OPTGROUP"&&x.label===sp.category);group?.append(new Option(sp.name,sp.slug));const b=document.createElement("button");b.type="button";b.className="guide-species-roster-item";b.dataset.species=sp.slug;b.dataset.guideTags=`${sp.name} ${sp.slug} ${sp.category} ${GUIDE_SPECIES[sp.slug].ability} ${GUIDE_SPECIES[sp.slug].role}`;b.innerHTML=`${guideImageMarkup(sp,"", "guide-species-thumb")}<span><b>${escapeHtml(sp.name)}</b><small>${escapeHtml(GUIDE_SPECIES[sp.slug].ability)}</small></span>`;b.onclick=()=>{selectedGuideSpeciesSlug=sp.slug;guideSpeciesManualSelection=true;renderGuideSpeciesHandbook();};host.append(b);});if([...select.options].some(o=>o.value===keep))select.value=keep;}
 function renderGuideSpeciesHandbook(){const detail=$("guideSpeciesDetail"),select=$("guideSpeciesSelect"),live=gatewayCurrentPlayer();if(!detail)return;const liveSlug=guideSpeciesSlugFromValue(live?.species);if(!guideSpeciesManualSelection&&liveSlug&&GUIDE_SPECIES[liveSlug])selectedGuideSpeciesSlug=liveSlug;if(!GUIDE_SPECIES[selectedGuideSpeciesSlug])selectedGuideSpeciesSlug=Object.keys(GUIDE_SPECIES)[0];const d=guideSpeciesMeta(selectedGuideSpeciesSlug);if(!d)return;if(select&&select.value!==d.slug)select.value=d.slug;document.querySelectorAll(".guide-species-roster-item").forEach(b=>b.classList.toggle("active",b.dataset.species===d.slug));const isLive=Boolean(liveSlug&&liveSlug===d.slug),growth=isLive?Number(live?.growth):NaN,stage=guideGrowthStage(growth),stageTip=isLive?(Number.isFinite(growth)&&growth<75?d.young:d.adult):d.young;detail.innerHTML=`
 <div class="species-guide-hero">
-  <div class="species-guide-image"><img src="${escapeHtml(d.image)}" alt="${escapeHtml(d.name)}" loading="lazy"/></div>
+  <div class="species-guide-image">${guideImageMarkup(d,d.name+" Evrima reference","guide-species-hero-img")}</div>
   <div class="species-guide-intro"><div class="species-guide-kicker">${escapeHtml(d.diet)} · ${escapeHtml(d.category)}</div><h4>${escapeHtml(d.name)}</h4><p>${escapeHtml(d.summary)}</p><div class="species-guide-badges"><span>${escapeHtml(d.difficulty)}</span><span>${escapeHtml(d.role)}</span>${isLive?`<span class="live">LIVE · ${Number.isFinite(growth)?growth+"%":"spawned"}</span>`:""}</div></div>
 </div>
 <div class="species-guide-statbar"><div><span>Core ability</span><b>${escapeHtml(d.ability)}</b></div><div><span>Reference growth</span><b>${escapeHtml(d.growth)}</b></div><div><span>Group limit</span><b>${escapeHtml(d.group)}</b></div><div><span>Nest</span><b>${escapeHtml(d.nest)}</b></div><div><span>${isLive?"Your stage":"Handbook"}</span><b>${escapeHtml(stage)}</b></div></div>
@@ -890,7 +935,7 @@ function renderGuideSpeciesHandbook(){const detail=$("guideSpeciesDetail"),selec
 function initGuideSpeciesHandbook(){renderGuideSpeciesRoster();const select=$("guideSpeciesSelect"),liveBtn=$("guideUseLiveSpecies");if(select)select.onchange=()=>{selectedGuideSpeciesSlug=select.value;guideSpeciesManualSelection=true;renderGuideSpeciesHandbook();};if(liveBtn)liveBtn.onclick=()=>{const live=gatewayCurrentPlayer(),slug=guideSpeciesSlugFromValue(live?.species);if(!slug||!GUIDE_SPECIES[slug]){toast("No supported live dinosaur detected");return;}guideSpeciesManualSelection=false;selectedGuideSpeciesSlug=slug;renderGuideSpeciesHandbook();document.getElementById("guide-species")?.scrollIntoView({behavior:"smooth",block:"start"});};renderGuideSpeciesHandbook();}
 
 
-/* Primeval Refuge Guide v0.14.0 */
+/* Primeval Refuge Guide v0.14.1 */
 function guideSpeciesRole(player){const name=String(player?.species||"").toLowerCase();const species=SPECIES.find(s=>s.slug===name)||SPECIES.find(s=>s.name.toLowerCase()===name);return species?.category||"Survivor";}
 function renderGuideLiveContext(){renderGuideSpeciesHandbook();const p=gatewayCurrentPlayer(),fit=activeGatewayFit(),q=p&&fit?applyGatewayTransform(fit,p.location?.x,p.location?.y):null,onMap=q&&q.u>=0&&q.u<=1&&q.v>=0&&q.v<=1,ctx=onMap?currentGatewayContext(q):{area:"—",zones:[]},role=guideSpeciesRole(p),growth=Number(p?.growth);if($("guideLiveSpecies"))$("guideLiveSpecies").textContent=p?.species||"—";if($("guideLiveGrowth"))$("guideLiveGrowth").textContent=Number.isFinite(growth)?growth+"%":"—";if($("guideLiveRole"))$("guideLiveRole").textContent=p?role:"—";if($("guideLiveArea"))$("guideLiveArea").textContent=ctx.area||"—";if($("guideLiveSummary"))$("guideLiveSummary").textContent=p?`${p.name||"Survivor"} · ${p.species||"Dinosaur"} · ${Number.isFinite(growth)?growth+"% growth":"live"}`:"Spawn into Primeval Refuge for live guidance";const title=$("guideNowTitle"),list=$("guideNowList");if(!title||!list)return;let advice=[];if(!p){title.textContent="Quick-start priorities";advice=["Keep food, water and stamina healthy before taking risks.","Use scent and the compass to navigate instead of sprinting blindly.","Open the Map tab while moving so area names start becoming familiar."];}else{const young=Number.isFinite(growth)&&growth<35,mid=Number.isFinite(growth)&&growth>=35&&growth<75;title.textContent=young?`Growing ${p.species}: survive first`:`Playing ${p.species}: current priorities`;if(young)advice.push("Prioritise safe food, water and growth; avoid unnecessary adult encounters and exposed travel.");else if(mid)advice.push("You have more capability now, but keep an escape route and enough stamina to disengage.");else advice.push("Maintain diet, water and stamina before committing to fights, nesting or long travel.");const r=role.toLowerCase();if(r.includes("herbivore"))advice.push("Use migration cues and reference zones to find better plant/diet opportunities; young herbivores should learn sanctuary cues.");else if(r.includes("aquatic"))advice.push("Use waterways as your main movement network and learn crossings, bends and shore access before taking long overland risks.");else if(r.includes("flyer"))advice.push("Protect flight stamina and choose safe landing/drinking spots before you are forced down.");else if(r.includes("omnivore"))advice.push("Use your flexible diet deliberately: fill nutrient gaps instead of eating only the easiest food.");else advice.push("Scent, carcass signs and patrol activity can help find food, but they can also lead you directly into stronger predators.");if(ctx.area&&ctx.area!=="—")advice.push(`You are currently around ${ctx.area}; use the Map tab to connect what you see in-game with the terrain name.`);if(ctx.zones?.length)advice.push(`Your marker overlaps reference zone geometry for ${[...new Set(ctx.zones.map(z=>z.name))].join(", ")}. Treat it as a navigation clue, not confirmed live activation.`);}list.innerHTML=advice.map(x=>`<li>${escapeHtml(x)}</li>`).join("");}
 function filterGuideCards(){const q=String($("guideSearch")?.value||"").trim().toLowerCase(),cards=[...document.querySelectorAll(".guide-card")],symbols=[...document.querySelectorAll(".scent-card, .exact-zone-card")],species=[...document.querySelectorAll(".guide-species-roster-item")];let shown=0,symbolShown=0,speciesShown=0;cards.forEach(card=>{const hay=((card.dataset.guideTags||"")+" "+card.textContent).toLowerCase(),ok=!q||hay.includes(q);card.hidden=!ok;if(ok){shown++;if(q&&card.tagName==="DETAILS")card.open=true;}});symbols.forEach(item=>{const hay=((item.dataset.guideTags||"")+" "+item.textContent).toLowerCase(),ok=!q||hay.includes(q);item.hidden=!ok;if(ok)symbolShown++;});species.forEach(item=>{const hay=((item.dataset.guideTags||"")+" "+item.textContent).toLowerCase(),ok=!q||hay.includes(q);item.hidden=!ok;if(ok)speciesShown++;});const grid=$("guideGrid");if(grid)grid.classList.toggle("no-results",shown===0);const status=$("guideSearchStatus");if(status)status.textContent=q?`${speciesShown} species, ${symbolShown} symbol/zone reference${symbolShown===1?"":"s"} and ${shown} guide chapter${shown===1?"":"s"} match “${$("guideSearch").value.trim()}”.`:"";}
