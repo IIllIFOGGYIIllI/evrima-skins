@@ -132,7 +132,7 @@
 <div class="statuses brand-statuses">
 <span class="status warn" id="apiStatus">API checking…</span>
 <span class="status warn" id="serverStatus">Bridge checking…</span>
-<span class="status">Web v0.13.2</span>
+<span class="status">Web v0.14.0</span>
 </div>
 </div>
 </header><nav aria-label="Skin Studio sections" class="app-tabs">
@@ -452,7 +452,7 @@
 <section class="app-page" data-app-page="guide" id="page-guide">
 <main class="page-shell guide-page-shell">
 <div class="page-heading guide-page-heading">
-<div><div class="kicker">EVRIMA BEGINNER FIELD MANUAL</div><h2>Primeval Refuge Guide</h2><p>A detailed, plain-English guide for learning Evrima from your first spawn through advanced lifecycle systems. It explains the HUD, compass symbols, diet icons, zones, combat, injuries, growth, mutations, nesting and the Primeval Refuge live map.</p></div>
+<div><div class="kicker">EVRIMA BEGINNER FIELD MANUAL</div><h2>Primeval Refuge Guide</h2><p>A detailed, plain-English guide for learning Evrima from your first spawn through advanced lifecycle systems. It explains the HUD, compass symbols, diet icons, every current Primeval Refuge species profile, zones, combat, injuries, growth, mutations, nesting and the Primeval Refuge live map.</p></div>
 <div class="guide-heading-actions"><input id="guideSearch" type="search" placeholder="Search symbols, controls, diet, bleed…"/><button id="guideClearSearch" type="button">Clear</button><button id="guideExpandAll" type="button">Expand all</button><button id="guideCollapseAll" type="button">Collapse</button></div>
 </div>
 <section class="panel guide-live-card">
@@ -463,9 +463,27 @@
 </section>
 <nav class="guide-toc panel" aria-label="Guide contents">
 <span>Jump to:</span>
-<a href="#guide-symbols">Symbols</a><a href="#guide-start">First life</a><a href="#guide-controls">Controls</a><a href="#guide-scent">Scent</a><a href="#guide-diet">Diet</a><a href="#guide-zones">Zones</a><a href="#guide-growth">Growth</a><a href="#guide-combat">Combat</a><a href="#guide-injuries">Injuries</a><a href="#guide-mutations">Mutations</a><a href="#guide-nesting">Nesting</a><a href="#guide-prime">Prime / Elder</a><a href="#guide-map">Map</a>
+<a href="#guide-species">Species handbook</a><a href="#guide-symbols">Symbols</a><a href="#guide-start">First life</a><a href="#guide-controls">Controls</a><a href="#guide-scent">Scent</a><a href="#guide-diet">Diet</a><a href="#guide-zones">Zones</a><a href="#guide-growth">Growth</a><a href="#guide-combat">Combat</a><a href="#guide-injuries">Injuries</a><a href="#guide-mutations">Mutations</a><a href="#guide-nesting">Nesting</a><a href="#guide-prime">Prime / Elder</a><a href="#guide-map">Map</a>
 </nav>
 <div class="guide-search-status" id="guideSearchStatus" aria-live="polite"></div>
+<section class="panel guide-species-panel" id="guide-species">
+  <div class="section-head guide-species-head">
+    <div>
+      <div class="kicker">SPECIES HANDBOOK</div>
+      <h3>Pick a dinosaur and learn how to survive with it</h3>
+      <span class="section-sub">Current Primeval Refuge playables are organised by role, core ability, growth commitment and the mistakes that usually kill new players. If you are spawned in, the handbook can follow your live dinosaur automatically.</span>
+    </div>
+    <div class="guide-species-actions">
+      <select id="guideSpeciesSelect" aria-label="Choose species"></select>
+      <button id="guideUseLiveSpecies" type="button">Use my live dinosaur</button>
+    </div>
+  </div>
+  <div class="guide-species-reference-note"><b>Reference baseline:</b> current Evrima Quick Guide quick-facts data checked September 2026. Growth times, group limits and abilities are patch-sensitive; Primeval Refuge will keep the beginner advice conservative when a value is not confirmed.</div>
+  <div class="guide-species-roster" id="guideSpeciesRoster" aria-label="Species list"></div>
+  <article class="guide-species-detail" id="guideSpeciesDetail">
+    <div class="guide-species-empty">Choose a species to open its handbook.</div>
+  </article>
+</section>
 <section class="panel guide-symbol-panel exact-hud-panel guide-mode-quick" id="guide-symbols">
 <div class="section-head guide-symbol-head">
   <div>
