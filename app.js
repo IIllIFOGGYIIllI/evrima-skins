@@ -514,7 +514,7 @@ function setAppPage(page,writeUrl=true){
   if(!APP_PAGES.has(page))page="studio";
   document.querySelectorAll("[data-app-page]").forEach(el=>el.classList.toggle("active",el.dataset.appPage===page));
   document.querySelectorAll(".app-tabs [data-page]").forEach(b=>b.classList.toggle("active",b.dataset.page===page));
-  if(writeUrl){const u=new URL(location.href);u.searchParams.set("view",page);history.replaceState(null,"",u.pathname+u.search);}
+  if(writeUrl){const u=new URL(location.href);u.searchParams.set("view",page);window.history.replaceState(null,"",u.pathname+u.search);}
   if(page==="studio")setTimeout(()=>window.dispatchEvent(new Event("resize")),20);
   if(page==="publishing"&&me)refreshPublishedMine(true);
   if(page==="community")refreshCommunity(true);
@@ -733,9 +733,9 @@ async function refreshMe(){
   if(!API_READY){$("apiStatus").textContent="API not configured";$("apiStatus").className="status warn";setCloudStatus("Cloud library unavailable","bad");return;}
   try{await api("/health");$("apiStatus").textContent="Skin API online";$("apiStatus").className="status good";}
   catch{$("apiStatus").textContent="Skin API unreachable";$("apiStatus").className="status bad";}
-  if(!session){me=null;cloudLibrary={skins:[],lastApplied:null};activeCloudId="";publishedMine=[];renderCloudLibrary();renderPublishedMine();setCloudStatus("Sign in with Steam to sync saved skins","");setPublishStatus("Sign in with Steam to publish","");$("accountTitle").textContent="Steam not linked";$("accountDetail").textContent="Sign in once. No client files or commands required.";$("steamButton").textContent="Sign in with Steam";renderLiveLocation();return;}
-  try{me=await api("/api/me");$("accountTitle").textContent=me.discord?"Steam + Discord linked":"Steam linked";const discordLabel=me.discord?(me.discord.displayName||me.discord.username||me.discord.id):"Not linked";$("accountDetail").textContent="SteamID64 "+me.steam+" • Discord: "+discordLabel;$("steamButton").textContent="Sign out";loadCachedCloudLibrary();refreshCloudLibrary(true);refreshApplyHistory(true);refreshPublishedMine(true);refreshLiveLocation(true);}
-  catch{session="";localStorage.removeItem("foggy_skin_session");me=null;refreshMe();}
+  if(!session){window.PrimevalJourneys?.setAccount(null);me=null;cloudLibrary={skins:[],lastApplied:null};activeCloudId="";publishedMine=[];renderCloudLibrary();renderPublishedMine();setCloudStatus("Sign in with Steam to sync saved skins","");setPublishStatus("Sign in with Steam to publish","");$("accountTitle").textContent="Steam not linked";$("accountDetail").textContent="Sign in once. No client files or commands required.";$("steamButton").textContent="Sign in with Steam";renderLiveLocation();return;}
+  try{me=await api("/api/me");window.PrimevalJourneys?.setAccount(me.steam);$("accountTitle").textContent=me.discord?"Steam + Discord linked":"Steam linked";const discordLabel=me.discord?(me.discord.displayName||me.discord.username||me.discord.id):"Not linked";$("accountDetail").textContent="SteamID64 "+me.steam+" • Discord: "+discordLabel;$("steamButton").textContent="Sign out";loadCachedCloudLibrary();refreshCloudLibrary(true);refreshApplyHistory(true);refreshPublishedMine(true);refreshLiveLocation(true);}
+  catch{session="";localStorage.removeItem("foggy_skin_session");window.PrimevalJourneys?.setAccount(null);me=null;refreshMe();}
 }
 let liveLocationBusy=false,lastLiveLocationData=null;
 function renderLiveLocation(d=null){
@@ -756,7 +756,7 @@ function renderLiveLocation(d=null){
 }
 async function refreshLiveLocation(silent=true){
   if(liveLocationBusy)return;if(!me||!API_READY){renderLiveLocation();return;}liveLocationBusy=true;renderLiveLocation(null);
-  try{const d=await api("/api/live/me");renderLiveLocation(d);if(!silent&&d.online)toast("Live location refreshed");}
+  try{const d=await api("/api/live/me");renderLiveLocation(d);window.PrimevalJourneys?.ingest(me?.steam,d);if(!silent&&d.online)toast("Live location refreshed");}
   catch(e){renderLiveLocation({tracking:{enabled:true,ok:false,fresh:false,error:e.message}});if(!silent)toast(e.message);}
   finally{liveLocationBusy=false;}
 }
@@ -827,7 +827,19 @@ function calculateGatewayCalibration(){
   rows.forEach((r,i)=>{for(let x=0;x<3;x++){bu[x]+=r[x]*pts[i].mapU;bv[x]+=r[x]*pts[i].mapV;for(let y=0;y<3;y++)m[x][y]+=r[x]*r[y];}});
   const cu=solve3x3(m,bu),cv=solve3x3(m,bv);if(!cu||!cv)return null;
   const fit={originX,originY,worldScale,u:cu,v:cv,rmsPx:0,maxPx:0};let total=0,max=0;
-  pts.forEach(p=>{const q=applyGatewayTransform(fit,p.worldX,p.worldY),dx=(q.u-p.mapU)*GATEWAY_MAP_WIDTH,dy=(q.v-p.mapV)*GATEWAY_MAP_HEIGHT,e=Math.hypot(dx,dy);total+=e*e;max=Math.max(max,e);});fit.rmsPx=Math.sqrt(total/pts.length);fit.maxPx=max;return fit;
+  pts.forEach(p=>{const q=applyGatewayTransform(fit,p.worldX,p.worldY),dx=(q.u-p.mapU)*GATEWAY_MAP_WIDTH,dy=(q.v-p.mapV)*GATEWAY_MAP_HEIGHT,e=Math.hypot(dx,dy);total+=e*e;max=Math.max(max,e);});fit.rmsPx=Math.sqrt(total/pts.length);fit.maxPx=max;
+  const reference=GATEWAY_REFERENCE_FIT,refScaleX=Math.hypot(reference.u[0],reference.v[0]),refScaleY=Math.hypot(reference.u[1],reference.v[1]);
+  const scaleX=Math.hypot(cu[0],cv[0])/refScaleX,scaleY=Math.hypot(cu[1],cv[1])/refScaleY;
+  const determinant=cu[0]*cv[1]-cu[1]*cv[0],refDet=reference.u[0]*reference.v[1]-reference.u[1]*reference.v[0];
+  let spread=0;
+  for(let i=0;i<pts.length;i++)for(let j=i+1;j<pts.length;j++)for(let k=j+1;k<pts.length;k++){
+    const a=pts[i],b=pts[j],c=pts[k];
+    spread=Math.max(spread,Math.abs(((b.worldX-a.worldX)*(c.worldY-a.worldY)-(b.worldY-a.worldY)*(c.worldX-a.worldX))/(worldScale*worldScale)));
+  }
+  fit.coverageKm2=spread/2;
+  fit.usable=spread>=.08&&determinant*refDet>0&&scaleX>=.4&&scaleX<=2.5&&scaleY>=.4&&scaleY<=2.5&&fit.rmsPx<=180;
+  fit.warning=spread<.08?"Anchors are too close together or nearly collinear. Visit widely separated landmarks.":determinant*refDet<=0?"Calibration flips the map orientation. Check which map points you clicked.":scaleX<.4||scaleX>2.5||scaleY<.4||scaleY>2.5?"Calibration would distort the map scale. Recheck the anchors.":fit.rmsPx>180?"Anchor agreement is poor (over 180 px RMS). Correct misplaced points.":"";
+  return fit;
 }
 function applyGatewayTransform(fit,x,y){if(!fit)return null;const sx=(Number(x)-fit.originX)/fit.worldScale,sy=(Number(y)-fit.originY)/fit.worldScale;return{u:fit.u[0]*sx+fit.u[1]*sy+fit.u[2],v:fit.v[0]*sx+fit.v[1]*sy+fit.v[2]};}
 function mapPointFromClient(clientX,clientY){const stage=$("gatewayMapStage");if(!stage)return null;const r=stage.getBoundingClientRect();if(!r.width||!r.height)return null;const u=(clientX-r.left)/r.width,v=(clientY-r.top)/r.height;if(u<0||u>1||v<0||v>1)return null;return{u,v};}
@@ -840,7 +852,7 @@ function zoomGatewayMap(next,clientX=null,clientY=null){
   const vp=$("gatewayMapViewport");if(!vp)return;const old=gatewayMapZoom,n=clamp(next,1,5);if(Math.abs(n-old)<.001)return;const r=vp.getBoundingClientRect(),px=clientX==null?r.width/2:clientX-r.left,py=clientY==null?r.height/2:clientY-r.top;gatewayMapPanX=px-((px-gatewayMapPanX)/old)*n;gatewayMapPanY=py-((py-gatewayMapPanY)/old)*n;gatewayMapZoom=n;setGatewayMapTransform();}
 function resetGatewayMapView(){gatewayMapZoom=1;gatewayMapPanX=0;gatewayMapPanY=0;setGatewayMapTransform();}
 function syncGatewayMapSize(){setGatewayMapTransform();}
-function activeGatewayFit(){return gatewayCalibrationFit||GATEWAY_REFERENCE_FIT;}
+function activeGatewayFit(){return $("mapUseReference")?.checked||!gatewayCalibrationFit?.usable?GATEWAY_REFERENCE_FIT:gatewayCalibrationFit;}
 function gatewayCurrentPlayer(){return lastLiveLocationData?.online&&lastLiveLocationData?.player?lastLiveLocationData.player:null;}
 function gatewayTracking(){return lastLiveLocationData?.tracking||null;}
 function formatWorld(n){return Number.isFinite(Number(n))?Number(n).toFixed(1):"—";}
@@ -858,14 +870,15 @@ function renderGatewayCalibrationList(){
 function renderGatewayMapMarkers(){
   const host=$("gatewayMapMarkers");if(!host)return;host.innerHTML="";gatewayCalibrationAnchors.forEach((p,i)=>{const m=document.createElement("div");m.className="gateway-marker gateway-anchor-marker";m.style.left=(p.mapU*100)+"%";m.style.top=(p.mapV*100)+"%";m.textContent=String(i+1);m.dataset.label=p.label||`Point ${i+1}`;host.append(m);});
   const player=gatewayCurrentPlayer(),fit=activeGatewayFit();if(player&&fit){const q=applyGatewayTransform(fit,player.location?.x,player.location?.y),m=document.createElement("div");m.className="gateway-marker gateway-live-marker";m.dataset.live="1";m.dataset.label=`YOU · ${player.species||"Dinosaur"}`;if(q&&q.u>=0&&q.u<=1&&q.v>=0&&q.v<=1){m.style.left=(q.u*100)+"%";m.style.top=(q.v*100)+"%";}else m.classList.add("off-map");host.append(m);}
+  window.PrimevalJourneys?.renderTrail(activeGatewayFit(),applyGatewayTransform);
 }
 function renderGatewayMap(){
   gatewayCalibrationFit=calculateGatewayCalibration();const n=gatewayCalibrationAnchors.length,fit=gatewayCalibrationFit,badge=$("mapCalibrationBadge"),status=$("mapCalibrationStatus"),fitEl=$("mapCalibrationFit"),vp=$("gatewayMapViewport");
-  if(badge){badge.textContent=fit?`${n} anchor${n===1?"":"s"} · tuned`:n?`${n}/3 anchors`:`Reference projection`;badge.className="status "+(fit?"good":n?"warn":"good");}
+  if(badge){badge.textContent=fit?.usable?`${n} anchors · tuned`:n?`${n} anchors · reference`:`Reference projection`;badge.className="status "+(fit?.usable?"good":n?"warn":"good");}
   if(vp)vp.classList.toggle("calibrating",gatewayMapCalibrationMode);
   if($("mapCalibrationToggle"))$("mapCalibrationToggle").textContent=gatewayMapCalibrationMode?"Finish calibration":"Start calibration";
-  if(status){if(gatewayMapCalibrationMode)status.textContent=gatewayCurrentPlayer()?"Calibration active — click the exact point where you are standing":"Calibration active — waiting for a live spawned dinosaur";else status.textContent=fit?"Custom calibration solved — add more anchors to improve accuracy":"Reference projection active — calibration is optional verification/tuning.";}
-  if(fitEl){if(!fit){fitEl.className="map-calibration-fit "+(n?"warn":"good");fitEl.textContent=n?`Reference projection still active · ${n}/3 anchors captured · add widely separated points to calculate a custom fit.`:"Reference projection active · X: (X/1000 + 505) / 1112 · Y: (Y/1000 + 607) / 1116. Add anchors only to verify or tune it.";}else{fitEl.className="map-calibration-fit "+(fit.rmsPx<80?"good":"warn");fitEl.textContent=`Custom affine transform from ${n} anchors · RMS error ${fit.rmsPx.toFixed(1)} px · max ${fit.maxPx.toFixed(1)} px${fit.rmsPx>80?" · add wider-spread anchors":""}`;}}
+  if(status){if(gatewayMapCalibrationMode)status.textContent=gatewayCurrentPlayer()?"Calibration active — click the exact point where you are standing":"Calibration active — waiting for a live spawned dinosaur";else status.textContent=fit?.usable?($("mapUseReference")?.checked?"Custom fit ready; reference view selected.":"Custom calibration active — confirm landmarks before trusting it."):"Reference projection active — custom calibration needs three well-separated, consistent anchors.";}
+  if(fitEl){if(!fit){fitEl.className="map-calibration-fit "+(n?"warn":"good");fitEl.textContent=n?`Reference projection still active · ${n}/3 anchors captured · add widely separated points to calculate a custom fit.`:"Reference projection active · X: (X/1000 + 505) / 1112 · Y: (Y/1000 + 607) / 1116. Add anchors only to verify or tune it.";}else{fitEl.className="map-calibration-fit "+(fit.usable?"good":"warn");fitEl.textContent=`${fit.usable?"Custom transform ready":"Using safe reference projection"} · ${n} anchors · RMS ${fit.rmsPx.toFixed(1)} px · maximum ${fit.maxPx.toFixed(1)} px · anchor area ~${fit.coverageKm2.toFixed(2)} km²${fit.warning?" · "+fit.warning:""}`;}}
   renderGatewayCalibrationList();renderGatewayReferenceLayers();renderGatewayMapMarkers();updateGatewayMapLiveData();setGatewayMapTransform();
 }
 function updateGatewayMapLiveData(checking=false){
@@ -1033,7 +1046,7 @@ async function applySkin(){
 }
 
 
-buildSpecies();buildColors();buildPresets();initGuideSpeciesHandbook();buildCloudFilters();buildCommunitySpecies();refreshSaved();renderCloudLibrary();renderPublishedMine();renderApplyHistory();readAuthHash();renderAll();saveGatewayLayerState();initGatewayMap();setAppPage(currentPageFromUrl(),false);refreshMe();refreshServerStatus();loadSharedPublicationFromUrl();refreshCommunity(true);renderGuideLiveContext();
+buildSpecies();buildColors();buildPresets();initGuideSpeciesHandbook();buildCloudFilters();buildCommunitySpecies();refreshSaved();renderCloudLibrary();renderPublishedMine();renderApplyHistory();readAuthHash();renderAll();saveGatewayLayerState();window.PrimevalJourneys?.init(()=>renderGatewayMapMarkers());initGatewayMap();setAppPage(currentPageFromUrl(),false);refreshMe();refreshServerStatus();loadSharedPublicationFromUrl();refreshCommunity(true);renderGuideLiveContext();
 setInterval(refreshServerStatus,10000);
 setInterval(()=>{if(me&&document.visibilityState==="visible")refreshLiveLocation(true);},5000);
 
@@ -1070,6 +1083,7 @@ if($("mapCalibrationToggle"))$("mapCalibrationToggle").onclick=()=>{gatewayMapCa
 if($("mapDeleteLast"))$("mapDeleteLast").onclick=()=>{if(!gatewayCalibrationAnchors.length)return toast("No calibration anchors to delete");gatewayCalibrationAnchors.pop();saveGatewayCalibrationAnchors();renderGatewayMap();};
 if($("mapClearCalibration"))$("mapClearCalibration").onclick=()=>{if(!gatewayCalibrationAnchors.length)return;if(!confirm("Clear all Gateway calibration anchors saved in this browser?"))return;gatewayCalibrationAnchors=[];saveGatewayCalibrationAnchors();renderGatewayMap();toast("Calibration cleared");};
 if($("mapCopyCalibration"))$("mapCopyCalibration").onclick=copyGatewayCalibration;
+if($("mapUseReference"))$("mapUseReference").onchange=renderGatewayMap;
 
 if($("mapLayerNames"))$("mapLayerNames").onchange=e=>{gatewayLayerState.names=e.target.checked;saveGatewayLayerState();renderGatewayReferenceLayers();};
 if($("mapLayerMigration"))$("mapLayerMigration").onchange=e=>{gatewayLayerState.migration=e.target.checked;saveGatewayLayerState();renderGatewayReferenceLayers();updateGatewayMapLiveData();};
