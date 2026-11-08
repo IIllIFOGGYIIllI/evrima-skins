@@ -1,3 +1,12 @@
+## Web v0.15.0 — Gateway Private Journeys & Calibration Safeguards (8 November 2026)
+
+- Adds per-SteamID browser-local Gateway journey recording from authenticated RCON locations, with rendered movement trails and previous-journey selection.
+- Adds pause/resume, visibility toggle, JSON/CSV export, seven-day retention (12 journeys), and confirmation-protected clearing.
+- Keeps coordinates on the user's own device; does not introduce public/admin tracking endpoints or transmit history back to the API.
+- Splits routes after respawns, disconnects, long gaps, unrealistic jumps, species changes or point caps; deduplicates repeat RCON timestamps.
+- Adds safer custom-calibration validation, RMS and coverage diagnostics, reference-projection fallback and projection comparison.
+- Fixes the browser history-variable collision in map navigation. Only static GitHub Pages files changed; no server restart required.
+
 ## Bot v0.3.0 / API v0.10.0 / Web v0.10.3 — Discord Skin Studio Integration
 
 - Adds `/skins` for paged, filterable access to the linked Steam Skin Studio library.
