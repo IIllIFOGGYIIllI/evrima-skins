@@ -727,7 +727,7 @@ function readAuthHash(){
   else if(discord==="expired")toast("Discord link expired. Run /link again in Discord");
   else if(discord==="failed")toast("Steam verification failed");
   else if(auth==="failed")toast("Steam sign-in failed");
-  if(t||discord||auth)history.replaceState(null,"",location.pathname+location.search);
+  if(t||discord||auth)window.history.replaceState(null,"",location.pathname+location.search);
 }
 async function refreshMe(){
   if(!API_READY){$("apiStatus").textContent="API not configured";$("apiStatus").className="status warn";setCloudStatus("Cloud library unavailable","bad");return;}
