@@ -1,0 +1,47 @@
+{
+  "id": "./",
+  "name": "Primeval Refuge — Evrima",
+  "short_name": "Primeval Refuge",
+  "description": "Primeval Refuge Evrima community, Skin Studio and private Gateway live map.",
+  "start_url": "./?source=pwa",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#07110b",
+  "theme_color": "#0b0e0a",
+  "orientation": "any",
+  "categories": [
+    "games",
+    "entertainment"
+  ],
+  "icons": [
+    {
+      "src": "./pwa-icons/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any"
+    },
+    {
+      "src": "./pwa-icons/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Skin Studio",
+      "short_name": "Studio",
+      "url": "./?view=studio"
+    },
+    {
+      "name": "Gateway Map",
+      "short_name": "Map",
+      "url": "./?view=map"
+    },
+    {
+      "name": "My Skin Library",
+      "short_name": "Library",
+      "url": "./?view=library"
+    }
+  ]
+}

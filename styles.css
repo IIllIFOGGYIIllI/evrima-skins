@@ -561,3 +561,14 @@ footer{text-align:center;color:#6f756c;font-size:9px;margin-top:15px}
 .map-journey-actions button:disabled{opacity:.48;cursor:not-allowed}
 .map-journey-note{margin:10px 0 0;color:#97b4a5;font-size:9px;line-height:1.55}
 @media(max-width:700px){.map-journey-panel{padding:10px}.gateway-journey-line{stroke-width:2.5}}
+
+
+/* Web v0.16.0 — optional PWA installation (no changes to existing map tabs) */
+.pwa-install-button{padding:8px 12px!important;font-size:11px!important;min-height:32px;border:1px solid #b99a50!important;background:linear-gradient(180deg,#3c3822,#1c241b)!important;color:#f4dc8c!important;white-space:nowrap}
+.pwa-install-button:hover{border-color:#f4d982!important}
+.pwa-install-button[hidden],.pwa-install-help[hidden]{display:none!important}
+.pwa-install-help{margin:0 0 10px;padding:11px 14px;border:1px solid #89703b;background:linear-gradient(90deg,#282719,#101a13);display:flex;justify-content:space-between;gap:14px;align-items:center;font-size:11px;color:#f1dfae;line-height:1.5}
+.pwa-install-help p{margin:0;flex:1}
+.pwa-install-help button{min-width:72px;font-size:11px}
+@media(max-width:700px){.pwa-install-button{flex:1;min-height:40px;font-size:12px!important}.pwa-install-help{padding:10px;align-items:flex-start;flex-direction:column}.pwa-install-help button{align-self:flex-end}}
+@media(display-mode:standalone){.pwa-install-button{display:none!important}}

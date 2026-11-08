@@ -5,8 +5,15 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
 <meta content="#0b0e0a" name="theme-color"/>
+<meta name="application-name" content="Primeval Refuge"/>
+<meta name="apple-mobile-web-app-title" content="Primeval Refuge"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black"/>
+<link rel="manifest" href="./manifest.json"/>
+<link rel="icon" type="image/png" sizes="192x192" href="./pwa-icons/icon-192.png"/>
+<link rel="apple-touch-icon" sizes="180x180" href="./pwa-icons/icon-180.png"/>
 <title>Primeval Refuge | Evrima Skin Studio</title>
-<link href="./styles.css?v=0150" rel="stylesheet"/>
+<link href="./styles.css?v=0160" rel="stylesheet"/>
 <script type="importmap">
 {
   "imports": {
@@ -132,10 +139,14 @@
 <div class="statuses brand-statuses">
 <span class="status warn" id="apiStatus">API checking…</span>
 <span class="status warn" id="serverStatus">Bridge checking…</span>
-<span class="status">Web v0.14.2</span>
+<span class="status">Web v0.16.0 · PWA</span>
+<button type="button" id="pwaInstallButton" class="pwa-install-button">Install app</button>
 </div>
 </div>
-</header><nav aria-label="Skin Studio sections" class="app-tabs">
+</header><div class="pwa-install-help" id="pwaInstallHelp" role="status" hidden>
+<p id="pwaInstallHelpText">Use your browser's Install or Add to Home Screen option.</p>
+<button type="button" id="pwaInstallDismiss">Dismiss</button>
+</div><nav aria-label="Skin Studio sections" class="app-tabs">
 <button class="active" data-page="studio" type="button">Studio</button>
 <button data-page="library" type="button">My Library</button>
 <button data-page="community" type="button">Community</button>
@@ -689,5 +700,6 @@
 <script src="./viewer3d.js?v=083" type="module"></script>
 <script src="./gateway-journeys.js?v=150"></script>
 <script src="./app.js?v=150"></script>
+<script src="./pwa.js?v=160"></script>
 </body>
 </html>

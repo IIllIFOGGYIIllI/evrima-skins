@@ -1,3 +1,10 @@
+## Web v0.16.0 — Installable PWA (8 November 2026)
+
+- Adds scoped GitHub Pages web manifest, 192px/512px app icons, 180px iOS home-screen icon and standalone launch mode.
+- Adds browser install action and iOS/desktop manual installation guidance.
+- Adds network-first service worker with limited public-static caching and an offline information page; never caches Steam sign-in, Railway API calls, live dinosaur data or private skin responses.
+- Retains existing Steam, bot, bridge, 3D preview, Gateway map and browser-local journey logic. No server-side deployment changes required.
+
 ## Web v0.15.0 — Gateway Private Journeys & Calibration Safeguards (8 November 2026)
 
 - Adds per-SteamID browser-local Gateway journey recording from authenticated RCON locations, with rendered movement trails and previous-journey selection.

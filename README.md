@@ -14,11 +14,22 @@ Browser skin creator for **Primeval Refuge**, an Evrima PvE community.
 - Retains the existing reference projection and browser-local calibration anchors. Custom affine fits are rejected in favour of the original projection when point coverage, map orientation, scale, or RMS residual is unreliable; users can manually compare against the reference.
 - Patches a separate browser-history variable collision in map/tab navigation. No game-server, Railway API, bot, UE4SS or bridge update is required for v0.15.0.
 
+## Installable PWA — Web v0.16.0 (8 November 2026)
+
+Primeval Refuge can be installed as a standalone web app from its **existing GitHub Pages URL**. A web app manifest, separate 192/512px icons, iOS home-screen icon, minimal install helper, and service worker were added. No APK, App Store submission, domain change, Railway variable, game-server restart or bot update is required.
+
+- Android: Chrome's Install app prompt/menu (where supported); iPhone/iPad: browser Share → Add to Home Screen; desktop: Chrome/Edge Install app option.
+- Steam OpenID authentication, live RCON dinosaur coordinates, Gateway tracking, server state, Skin Studio Apply, and cloud skins require an internet connection and are **never** served from the PWA's offline cache.
+- The service worker caches only a small same-origin allowlist of public static files and an offline notice. Navigation is always **network-first**, with an offline notice instead of stale application data. It cannot intercept the Railway API or Steam's external domain.
+- Browser-local skin presets and private journey history remain stored in the browser's origin storage; installing, clearing site data, and using the site in another device/browser can affect what is available. Route recording still requires the page to be open.
+- The icon is a compact Primeval Refuge gold-and-moss monogram for small home-screen sizes. Existing official banner/logo website files remain unchanged.
+- Install UI is optional and hidden in standalone mode; browsers that do not offer a native install event show instructions instead.
+
 ## Current stack
 
 | Component | Version | State |
 | --- | --- | --- |
-| Website | **v0.15.0** | Gateway live map, private journey trails/history, improved calibration + Skin Studio |
+| Website | **v0.16.0** | Installable PWA + Gateway private journeys + Skin Studio |
 | Preview pipeline | **v0.8.3** | Researched renderer + persistent browser cache |
 | Railway Skin API | **v0.10.1** | Apply + community discovery/publishing + secure live location + Discord integration |
 | Windows bridge | **v0.9.2 (local host)** | Skin/library bridge + corrected Evrima RCON response handling |
