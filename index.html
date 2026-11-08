@@ -6,7 +6,7 @@
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
 <meta content="#0b0e0a" name="theme-color"/>
 <title>Primeval Refuge | Evrima Skin Studio</title>
-<link href="./styles.css?v=0130" rel="stylesheet"/>
+<link href="./styles.css?v=0150" rel="stylesheet"/>
 <script type="importmap">
 {
   "imports": {
@@ -409,7 +409,7 @@
 </section>
 <section class="app-page" data-app-page="map" id="page-map">
 <main class="page-shell map-page-shell">
-<div class="page-heading map-page-heading"><div><div class="kicker">GATEWAY LIVE MAP</div><h2>Primeval Refuge Map</h2><p>Your live dinosaur position comes directly from Evrima RCON. Toggle Gateway area names and reference migration/patrol geometry to learn the map while you play.</p></div><div class="map-heading-status"><span class="status warn" id="mapTrackingStatus">Waiting for live data</span><span class="status" id="mapCalibrationBadge">0 anchors</span></div></div>
+<div class="page-heading map-page-heading"><div><div class="kicker">GATEWAY LIVE MAP</div><h2>Primeval Refuge Map</h2><p>Your live dinosaur position comes directly from Evrima RCON. Follow your live dinosaur, record private journeys on this device, and compare your route against Gateway landmarks and reference zones.</p></div><div class="map-heading-status"><span class="status warn" id="mapTrackingStatus">Waiting for live data</span><span class="status" id="mapCalibrationBadge">0 anchors</span></div></div>
 <div class="gateway-map-layout">
 <section class="panel gateway-map-panel">
 <div class="gateway-map-toolbar">
@@ -421,6 +421,7 @@
 <img id="gatewayMapImage" alt="Gateway map" draggable="false"/>
 <div class="gateway-map-grid" aria-hidden="true"></div>
 <div class="gateway-map-zones" id="gatewayMapZones" aria-hidden="true"></div>
+<svg class="gateway-journey-svg" id="gatewayJourneySvg" viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true"></svg>
 <div class="gateway-map-labels" id="gatewayMapLabels" aria-hidden="true"></div>
 <div class="gateway-map-markers" id="gatewayMapMarkers"></div>
 </div>
@@ -436,12 +437,20 @@
 <div class="map-live-note" id="mapLiveNote">The live marker uses the established Gateway reference projection. Zone overlays are reference geometry, not a claim that a zone is currently active on Primeval Refuge.</div>
 <div class="map-zone-legend"><span><i class="migration"></i> Migration reference</span><span><i class="patrol"></i> Patrol reference</span><small>Current live activation is not exposed by the RCON feed yet.</small></div>
 </section>
+<section class="panel map-journey-panel">
+<div class="section-head compact"><div><div class="kicker">PRIVATE JOURNEY TRACKING</div><span class="section-sub">Your movement history stays in this browser, separated by Steam account.</span></div></div>
+<label class="map-journey-visibility"><input id="mapShowJourney" type="checkbox" checked/> Show selected route on map</label>
+<label class="field-stack"><span>Recorded journey</span><select id="mapJourneySelect"><option value="latest">Latest journey</option></select></label>
+<div class="map-journey-summary" id="mapJourneySummary">Sign in with Steam to start recording your Gateway route.</div>
+<div class="map-journey-actions"><button id="mapJourneyRecording" type="button" disabled>Pause recording</button><button id="mapJourneyExportJson" type="button" disabled>Export JSON</button><button id="mapJourneyExportCsv" type="button" disabled>Export CSV</button><button id="mapJourneyClear" type="button" disabled>Clear history</button></div>
+<p class="map-journey-note">Recording starts when your live dinosaur is detected. Only this signed-in account's positions are stored on this device, for up to 7 days / 12 journeys. Large teleports, respawns and lengthy gaps start a new trail. Distances are approximate. Clearing browser site data also removes this history; exported files contain precise coordinates, so share them carefully.</p>
+</section>
 <section class="panel map-calibration-panel">
 <div class="section-head compact"><div><div class="kicker">ADMIN CALIBRATION MODE</div><span class="section-sub" id="mapCalibrationStatus">Stand at a recognisable location, then start calibration.</span></div></div>
 <label class="field-stack"><span>Anchor label</span><input id="mapCalibrationName" maxlength="40" placeholder="e.g. South Plains bridge"/></label>
 <div class="map-calibration-instructions" id="mapCalibrationInstructions">The map already has an established Gateway projection. When calibration is active, each click saves your current live RCON X/Y/Z against that exact map point so you can verify or tune it. Use at least 3 widely separated locations for a custom fit; 4–5 is better.</div>
 <div class="map-calibration-actions"><button id="mapDeleteLast" type="button">Delete last</button><button id="mapCopyCalibration" type="button">Copy calibration</button><button id="mapClearCalibration" type="button">Clear all</button></div>
-<div class="map-calibration-fit" id="mapCalibrationFit">No transform yet.</div>
+<label class="map-journey-visibility"><input id="mapUseReference" type="checkbox"/> Compare using the original reference projection</label><div class="map-calibration-fit" id="mapCalibrationFit">No transform yet.</div>
 <div class="map-calibration-list" id="mapCalibrationList"></div>
 </section>
 </aside>
@@ -678,6 +687,7 @@
 <div class="toast" id="toast"></div>
 <script src="./config.js"></script>
 <script src="./viewer3d.js?v=083" type="module"></script>
-<script src="./app.js?v=143"></script>
+<script src="./gateway-journeys.js?v=150"></script>
+<script src="./app.js?v=150"></script>
 </body>
 </html>
