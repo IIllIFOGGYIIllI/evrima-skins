@@ -4,14 +4,24 @@ Browser skin creator for **Primeval Refuge**, an Evrima PvE community.
 
 **Live site:** https://iillifoggyiilli.github.io/evrima-skins/
 
+## Gateway Map journeys — Web v0.15.0 (8 November 2026)
+
+- Draws a cyan live movement trail from the Steam-authenticated `GET /api/live/me` feed; only the signed-in account's position can reach the frontend.
+- Keeps recent journeys in browser `localStorage`, partitioned by SteamID64, limited to the latest 12 journeys, 1,600 samples per segment, and seven days of history. No journey-history data is posted to Railway, Discord or other users.
+- Automatically segments journeys after a fresh no-dinosaur result, species change, long tracking gap, implausible position jump or point-count limit. Repeated RCON polls do not create duplicate samples.
+- Adds a show/hide trail setting, journey selector, pause/resume, JSON and CSV export, and a confirmation-protected clear-history action. Routes cannot be recovered after site data is cleared unless previously exported.
+- Calculates an approximate XY journey distance, assuming Unreal world coordinate values are centimetres. Elevation (Z) is included in exported samples but not distance.
+- Retains the existing reference projection and browser-local calibration anchors. Custom affine fits are rejected in favour of the original projection when point coverage, map orientation, scale, or RMS residual is unreliable; users can manually compare against the reference.
+- Patches a separate browser-history variable collision in map/tab navigation. No game-server, Railway API, bot, UE4SS or bridge update is required for v0.15.0.
+
 ## Current stack
 
 | Component | Version | State |
 | --- | --- | --- |
-| Website | **v0.10.3** | Primeval Refuge branding + Studio / Library / Community / Publish + Discord deep links |
+| Website | **v0.15.0** | Gateway live map, private journey trails/history, improved calibration + Skin Studio |
 | Preview pipeline | **v0.8.3** | Researched renderer + persistent browser cache |
-| Railway Skin API | **v0.10.0** | Apply + community discovery/publishing + Discord Skin Studio bot API |
-| Windows bridge | **v0.8.1** | Cloud library + community catalogue persistence |
+| Railway Skin API | **v0.10.1** | Apply + community discovery/publishing + secure live location + Discord integration |
+| Windows bridge | **v0.9.2 (local host)** | Skin/library bridge + corrected Evrima RCON response handling |
 | UE4SS CustomSkins | **v0.6.2** | Multiplayer-hardened live Apply + persistence |
 | Primeval Refuge Bot | **v0.3.0** | Discord setup + Steam linking + Skin Studio library/apply commands |
 
